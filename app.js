@@ -1,5 +1,5 @@
 // ==========================================
-// SISTEMA PDV — FIREBASE REALTIME + OFFLINE
+// SISTEMA PDV — FIREBASE + PWA (OFFLINE & RESTAURAÇÃO F5)
 // ==========================================
 
 let estoque = [];
@@ -9,8 +9,9 @@ let config = { chavePix: '' };
 let carrinho = [];
 let usuarioLogado = null;
 let imgBase64Temp = ''; 
+let leitorCameraQr = null; // Variável Global do Leitor da Câmera
 
-// Variáveis de Banco de Dados
+// Variáveis Firebase
 let firebaseDatabase = null;
 let fbRef = null;
 let fbSet = null;
@@ -18,7 +19,16 @@ let fbGet = null;
 let fbChild = null;
 
 // ==========================================
-// INICIALIZAÇÃO FIREBASE (Dinâmico para não quebrar o HTML)
+// REGISTRO DO SERVICE WORKER (APP INSTALÁVEL)
+// ==========================================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('Erro no Service Worker:', err));
+  });
+}
+
+// ==========================================
+// INICIALIZAÇÃO FIREBASE E RESTAURAÇÃO DE TELA (F5)
 // ==========================================
 async function iniciarSistemaFirebase() {
   try {
@@ -50,12 +60,36 @@ async function iniciarSistemaFirebase() {
   }
   
   inicializarAdminPadrao();
-  irPara('login');
+  restaurarEstadoDoNavegador();
 }
 
 window.onload = function() {
   iniciarSistemaFirebase();
 };
+
+// Restaura os dados se o usuário apertar F5
+function restaurarEstadoDoNavegador() {
+  const salvoUser = localStorage.getItem('usuarioLogado');
+  
+  if (salvoUser) {
+    usuarioLogado = JSON.parse(salvoUser);
+    carrinho = JSON.parse(localStorage.getItem('carrinhoPendente')) || [];
+    
+    const telaSalva = localStorage.getItem('telaAtual') || 'venda';
+    const abaSalva = localStorage.getItem('abaAtual') || 'dashboard';
+    
+    // Recarrega layout header
+    document.getElementById('nome-operador').textContent = usuarioLogado.user;
+    document.getElementById('btn-menu-adm').style.display = usuarioLogado.isAdmin ? 'inline-block' : 'none';
+    const btnUsuarios = document.getElementById('btn-aba-usuarios');
+    if (btnUsuarios) btnUsuarios.style.display = (usuarioLogado.user === 'au.costa') ? 'inline-block' : 'none';
+    
+    irPara(telaSalva);
+    if (telaSalva === 'adm') mudarAbaAdm(abaSalva);
+  } else {
+    irPara('login');
+  }
+}
 
 // ==========================================
 // CONTROLE DE DADOS (ONLINE E OFFLINE)
@@ -71,13 +105,11 @@ async function carregarDadosDB() {
     usuarios = data.usuarios || [];
     config = data.config || { chavePix: '' };
     
-    // Sincroniza o local com o banco online mais recente
     localStorage.setItem('estoque', JSON.stringify(estoque));
     localStorage.setItem('vendas', JSON.stringify(vendas));
     localStorage.setItem('usuarios', JSON.stringify(usuarios));
     localStorage.setItem('config', JSON.stringify(config));
   } else {
-    // Se o Firebase estiver vazio (primeiro uso), sobe os dados locais pra ele
     carregarDadosLocais();
     salvarNoFirebase('estoque', estoque);
     salvarNoFirebase('vendas', vendas);
@@ -94,40 +126,31 @@ function carregarDadosLocais() {
 }
 
 function salvarDados(chave, dados) {
-  // 1. Salva localmente para funcionar Offline imediatamente
   localStorage.setItem(chave, JSON.stringify(dados));
-  
-  // 2. Tenta salvar no Firebase debaixo da pasta PDV/
-  if (firebaseDatabase) {
-    salvarNoFirebase(chave, dados);
-  }
+  if (firebaseDatabase) salvarNoFirebase(chave, dados);
 }
 
 function salvarNoFirebase(chave, dados) {
-  fbSet(fbRef(firebaseDatabase, 'PDV/' + chave), dados)
-    .catch(error => console.log('Sincronização Firebase pendente (Offline).', error));
+  fbSet(fbRef(firebaseDatabase, 'PDV/' + chave), dados).catch(err => console.log('Offline.', err));
 }
 
 function inicializarAdminPadrao() {
   const adminMaster = usuarios.find(u => u.user === 'au.costa');
   if (!adminMaster) {
-    usuarios.push({
-      id: Date.now(),
-      user: 'au.costa',
-      senha: '80605276',
-      isAdmin: true,
-      permissoes: 'ALL'
-    });
+    usuarios.push({ id: Date.now(), user: 'au.costa', senha: '80605276', isAdmin: true, permissoes: 'ALL' });
     salvarDados('usuarios', usuarios);
   }
 }
 
 // ==========================================
-// NAVEGAÇÃO
+// NAVEGAÇÃO E PERSISTÊNCIA DE TELA
 // ==========================================
 function irPara(nomeTela) {
   document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
   document.getElementById('tela-' + nomeTela).classList.add('ativa');
+
+  // Salva no navegador caso atualize
+  localStorage.setItem('telaAtual', nomeTela);
 
   if (nomeTela === 'venda') {
     renderizarProdutos();
@@ -148,47 +171,54 @@ function mudarAbaAdm(aba) {
   
   const btnClicado = document.querySelector(`.aba-btn[onclick*='${aba}']`);
   if (btnClicado) btnClicado.classList.add('ativa');
-  
   document.getElementById('aba-' + aba).classList.add('ativa');
+  
+  // Salva no navegador caso atualize
+  localStorage.setItem('abaAtual', aba);
 }
 
 function abrirModal(id) { document.getElementById(id).classList.add('ativa'); }
 function fecharModal(id) { document.getElementById(id).classList.remove('ativa'); }
 
 // ==========================================
-// UTILITÁRIOS DE IMAGEM (ARQUIVO E URL)
+// CÂMERA QR CODE E LOGIN
 // ==========================================
-function converterImagemBase64(event, imgPreviewId) {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    imgBase64Temp = e.target.result;
-    document.getElementById(imgPreviewId).src = imgBase64Temp;
-    
-    const idInputUrl = imgPreviewId === 'preview-img-cadastro' ? 'prod-imagem-url' : 'edit-prod-url';
-    document.getElementById(idInputUrl).value = '';
-  };
-  reader.readAsDataURL(file);
-}
-
-function carregarImagemUrl(url, imgPreviewId) {
-  if (!url) {
-    imgBase64Temp = '';
-    document.getElementById(imgPreviewId).src = '';
+function abrirCameraLogin() {
+  if (typeof Html5Qrcode === 'undefined') {
+    alert('⚠️ Biblioteca de Câmera não carregada. Conecte-se à internet uma vez para baixar.');
     return;
   }
-  imgBase64Temp = url;
-  document.getElementById(imgPreviewId).src = url;
   
-  const idInputFile = imgPreviewId === 'preview-img-cadastro' ? 'prod-imagem-file' : 'edit-prod-file';
-  document.getElementById(idInputFile).value = '';
+  abrirModal('modal-camera');
+  
+  leitorCameraQr = new Html5Qrcode('leitor-camera');
+  const configuracao = { fps: 10, qrbox: { width: 250, height: 250 } };
+  
+  leitorCameraQr.start({ facingMode: 'environment' }, configuracao, (textoLido) => {
+    // Sucesso na leitura
+    fecharCameraQR();
+    processarLoginCachra(textoLido.trim());
+  }, (erro) => {
+    // Ignora erros de frame contínuo da câmera
+  }).catch((err) => {
+    alert('❌ Erro ao acessar a Câmera: ' + err);
+    fecharCameraQR();
+  });
 }
 
-// ==========================================
-// SISTEMA DE LOGIN
-// ==========================================
+function fecharCameraQR() {
+  if (leitorCameraQr) {
+    leitorCameraQr.stop().then(() => { leitorCameraQr.clear(); }).catch(e => console.log(e));
+  }
+  fecharModal('modal-camera');
+}
+
+function processarLoginCachra(qrText) {
+  const usuario = usuarios.find(u => u.user === qrText);
+  if (usuario) iniciarSessao(usuario);
+  else alert('❌ Crachá inválido ou não cadastrado.');
+}
+
 function fazerLogin() {
   const user = document.getElementById('login-user').value.trim();
   const pass = document.getElementById('login-senha').value.trim();
@@ -197,26 +227,17 @@ function fazerLogin() {
   else alert('❌ Usuário ou senha incorretos!');
 }
 
-function escanearQRLogin() {
-  const qrText = prompt('Escaneie o Crachá/QR Code (Digite o nome do usuário):');
-  if (!qrText) return;
-  const usuario = usuarios.find(u => u.user === qrText.trim());
-  if (usuario) iniciarSessao(usuario);
-  else alert('❌ Usuário não encontrado.');
-}
-
 function iniciarSessao(usuario) {
   usuarioLogado = usuario;
+  localStorage.setItem('usuarioLogado', JSON.stringify(usuarioLogado));
+  
   document.getElementById('nome-operador').textContent = usuario.user;
   document.getElementById('login-user').value = '';
   document.getElementById('login-senha').value = '';
   
   document.getElementById('btn-menu-adm').style.display = usuario.isAdmin ? 'inline-block' : 'none';
-  
   const btnUsuarios = document.getElementById('btn-aba-usuarios');
-  if (btnUsuarios) {
-    btnUsuarios.style.display = (usuario.user === 'au.costa') ? 'inline-block' : 'none';
-  }
+  if (btnUsuarios) btnUsuarios.style.display = (usuario.user === 'au.costa') ? 'inline-block' : 'none';
   
   irPara('venda');
 }
@@ -224,11 +245,15 @@ function iniciarSessao(usuario) {
 function fazerLogout() {
   usuarioLogado = null;
   carrinho = [];
+  localStorage.removeItem('usuarioLogado');
+  localStorage.removeItem('carrinhoPendente');
+  localStorage.removeItem('telaAtual');
+  localStorage.removeItem('abaAtual');
   irPara('login');
 }
 
 // ==========================================
-// CAIXA E CARRINHO
+// CAIXA E CARRINHO (C/ PERSISTÊNCIA)
 // ==========================================
 function renderizarProdutos(lista) {
   const container = document.getElementById('lista-produtos');
@@ -267,11 +292,9 @@ function renderizarProdutos(lista) {
 function filtrarProdutos() {
   const termo = document.getElementById('busca').value.toLowerCase();
   let produtosDisponiveis = estoque;
-  
   if (!usuarioLogado.isAdmin && usuarioLogado.permissoes !== 'ALL') {
     produtosDisponiveis = estoque.filter(p => usuarioLogado.permissoes.includes(p.id.toString()));
   }
-
   const filtrado = produtosDisponiveis.filter(p => p.nome.toLowerCase().includes(termo));
   renderizarProdutos(filtrado);
 }
@@ -286,6 +309,7 @@ function adicionarAoCarrinho(idProd) {
   if (itemNoCarrinho) itemNoCarrinho.quantidade++;
   else carrinho.push({ ...produto, quantidade: 1 });
 
+  salvarCarrinhoPendente();
   renderizarProdutos();
   renderizarCarrinho();
 }
@@ -296,9 +320,15 @@ function removerDoCarrinho(idProd) {
   const produto = estoque.find(p => p.id === idProd);
   produto.quantidade += carrinho[idx].quantidade;
   carrinho.splice(idx, 1);
+  
   salvarDados('estoque', estoque);
+  salvarCarrinhoPendente();
   renderizarProdutos();
   renderizarCarrinho();
+}
+
+function salvarCarrinhoPendente() {
+  localStorage.setItem('carrinhoPendente', JSON.stringify(carrinho));
 }
 
 function renderizarCarrinho() {
@@ -329,6 +359,7 @@ function limparCarrinho() {
   });
   carrinho = [];
   salvarDados('estoque', estoque);
+  salvarCarrinhoPendente();
   renderizarProdutos();
   renderizarCarrinho();
 }
@@ -340,10 +371,7 @@ let formaPagamentoAtual = '';
 let valorTotalVendaAtual = 0;
 
 function iniciarPagamento(forma) {
-  if (carrinho.length === 0) {
-    alert('🛒 O Carrinho está vazio!');
-    return;
-  }
+  if (carrinho.length === 0) return alert('🛒 O Carrinho está vazio!');
   
   formaPagamentoAtual = forma;
   valorTotalVendaAtual = carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
@@ -355,10 +383,7 @@ function iniciarPagamento(forma) {
     abrirModal('modal-dinheiro');
   } 
   else if (forma === 'Pix') {
-    if (!config.chavePix) {
-      alert('⚠️ Chave Pix não configurada. Configure no Painel ADM.');
-      return;
-    }
+    if (!config.chavePix) return alert('⚠️ Chave Pix não configurada. Configure no Painel ADM.');
     gerarInterfacePix(valorTotalVendaAtual);
     abrirModal('modal-pix');
   } 
@@ -370,11 +395,7 @@ function iniciarPagamento(forma) {
 function calcularTrocoEConfirmar() {
   const input = document.getElementById('valor-recebido').value;
   const recebido = parseFloat(input.replace(',', '.'));
-  
-  if (isNaN(recebido) || recebido < valorTotalVendaAtual) {
-    alert('❌ Valor inserido é inválido ou menor que o total.');
-    return;
-  }
+  if (isNaN(recebido) || recebido < valorTotalVendaAtual) return alert('❌ Valor inserido é inválido ou menor que o total.');
   
   const troco = recebido - valorTotalVendaAtual;
   document.getElementById('valor-troco').textContent = troco.toFixed(2);
@@ -395,12 +416,7 @@ function gerarInterfacePix(valor) {
   
   const canvas = document.getElementById('canvas-qrcode');
   if (typeof QRious !== 'undefined') {
-    new QRious({
-      element: canvas,
-      value: payload,
-      size: 220,
-      level: 'M'
-    });
+    new QRious({ element: canvas, value: payload, size: 220, level: 'M' });
   }
 }
 
@@ -440,6 +456,7 @@ function confirmarVendaFeita(formaPagamento) {
   fecharModal('modal-pix');
   fecharModal('modal-dinheiro');
   carrinho = [];
+  salvarCarrinhoPendente();
   renderizarProdutos();
   renderizarCarrinho();
   alert('🎉 Venda Finalizada com Sucesso!');
@@ -457,7 +474,6 @@ function renderizarDashboard() {
     totalGeral += v.total;
     const user = v.usuario || 'Desconhecido';
     porUsuario[user] = (porUsuario[user] || 0) + v.total;
-
     v.itens.forEach(item => {
       porProduto[item.nome] = (porProduto[item.nome] || 0) + item.quantidade;
     });
@@ -494,15 +510,37 @@ function renderizarDashboard() {
 // ==========================================
 // ESTOQUE CRUD
 // ==========================================
+function converterImagemBase64(event, imgPreviewId) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    imgBase64Temp = e.target.result;
+    document.getElementById(imgPreviewId).src = imgBase64Temp;
+    const idInputUrl = imgPreviewId === 'preview-img-cadastro' ? 'prod-imagem-url' : 'edit-prod-url';
+    document.getElementById(idInputUrl).value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function carregarImagemUrl(url, imgPreviewId) {
+  if (!url) {
+    imgBase64Temp = '';
+    document.getElementById(imgPreviewId).src = '';
+    return;
+  }
+  imgBase64Temp = url;
+  document.getElementById(imgPreviewId).src = url;
+  const idInputFile = imgPreviewId === 'preview-img-cadastro' ? 'prod-imagem-file' : 'edit-prod-file';
+  document.getElementById(idInputFile).value = '';
+}
+
 function cadastrarProduto() {
   const nome = document.getElementById('prod-nome').value.trim();
   const preco = parseFloat(document.getElementById('prod-preco').value.replace(',', '.'));
   const qtd = parseInt(document.getElementById('prod-qtd').value);
 
-  if (!nome || isNaN(preco) || isNaN(qtd)) {
-    alert('❌ Preencha Nome, Preço e Quantidade corretamente.');
-    return;
-  }
+  if (!nome || isNaN(preco) || isNaN(qtd)) return alert('❌ Preencha Nome, Preço e Quantidade corretamente.');
 
   estoque.push({ id: Date.now(), nome, preco, quantidade: qtd, imagem: imgBase64Temp });
   salvarDados('estoque', estoque);
@@ -544,18 +582,14 @@ function renderizarListaEstoqueAdm() {
 function abrirEdicaoProduto(id) {
   const p = estoque.find(e => e.id === id);
   if (!p) return;
-  
   document.getElementById('edit-prod-id').value = p.id;
   document.getElementById('edit-prod-nome').value = p.nome;
   document.getElementById('edit-prod-preco').value = p.preco;
   document.getElementById('edit-prod-qtd').value = p.quantidade;
-  
   document.getElementById('edit-prod-file').value = '';
   document.getElementById('edit-prod-url').value = p.imagem && p.imagem.startsWith('http') ? p.imagem : '';
-  
   document.getElementById('preview-img-edit').src = p.imagem || '';
   imgBase64Temp = p.imagem || '';
-  
   abrirModal('modal-editar-produto');
 }
 
@@ -563,7 +597,6 @@ function salvarEdicaoProduto() {
   const id = parseInt(document.getElementById('edit-prod-id').value);
   const p = estoque.find(e => e.id === id);
   if (!p) return;
-
   p.nome = document.getElementById('edit-prod-nome').value;
   p.preco = parseFloat(document.getElementById('edit-prod-preco').value);
   p.quantidade = parseInt(document.getElementById('edit-prod-qtd').value);
@@ -573,6 +606,7 @@ function salvarEdicaoProduto() {
   fecharModal('modal-editar-produto');
   renderizarListaEstoqueAdm();
   carrinho = [];
+  salvarCarrinhoPendente();
 }
 
 function excluirProduto(id) {
@@ -581,6 +615,7 @@ function excluirProduto(id) {
     salvarDados('estoque', estoque);
     renderizarListaEstoqueAdm();
     carrinho = []; 
+    salvarCarrinhoPendente();
   }
 }
 
@@ -607,20 +642,12 @@ function importarExcel(event) {
         if (nome && precoStr !== undefined && qtdStr !== undefined) {
           const preco = parseFloat(precoStr.toString().replace(',', '.'));
           const qtd = parseInt(qtdStr);
-          
           if (!isNaN(preco) && !isNaN(qtd)) {
-            estoque.push({
-              id: baseId + index,
-              nome: nome.toString().trim(),
-              preco: preco,
-              quantidade: qtd,
-              imagem: ''
-            });
+            estoque.push({ id: baseId + index, nome: nome.toString().trim(), preco: preco, quantidade: qtd, imagem: '' });
             importados++;
           }
         }
       });
-
       if (importados > 0) {
         salvarDados('estoque', estoque);
         renderizarListaEstoqueAdm();
@@ -628,9 +655,7 @@ function importarExcel(event) {
       } else {
         alert('⚠️ Nenhum produto encontrado. Formato incorreto.');
       }
-    } catch (error) {
-      alert('❌ Erro ao ler Excel.');
-    }
+    } catch (error) { alert('❌ Erro ao ler Excel.'); }
     event.target.value = '';
   };
   reader.readAsArrayBuffer(file);
@@ -647,8 +672,7 @@ function atualizarCheckboxesPermissoes() {
     estoque.forEach(p => {
       div.innerHTML += `
         <label class='perm-item'>
-          <input type='checkbox' class='${cssClass}' value='${p.id}'> 
-          ${p.nome}
+          <input type='checkbox' class='${cssClass}' value='${p.id}'> ${p.nome}
         </label>
       `;
     });
@@ -657,9 +681,7 @@ function atualizarCheckboxesPermissoes() {
   renderCheckboxes('bloco-permissoes-edit', 'chk-perm-edit');
 }
 
-function marcarPermissoes(marcarTudo) {
-  document.querySelectorAll('.chk-perm-cad').forEach(chk => chk.checked = marcarTudo);
-}
+function marcarPermissoes(marcarTudo) { document.querySelectorAll('.chk-perm-cad').forEach(chk => chk.checked = marcarTudo); }
 
 function togglePermissoesUI() {
   const isAdm = document.getElementById('novo-isadm').checked;
@@ -707,7 +729,6 @@ function renderizarUsuariosAdm() {
   const termo = document.getElementById('busca-usuario').value.toLowerCase();
   const painel = document.getElementById('lista-usuarios-adm');
   painel.innerHTML = '';
-  
   const filtrados = usuarios.filter(u => u.user.toLowerCase().includes(termo));
 
   filtrados.forEach(u => {
@@ -754,18 +775,14 @@ function renderizarUsuariosAdm() {
 function abrirEdicaoUsuario(id) {
   const u = usuarios.find(x => x.id === id);
   if (!u || u.user === 'au.costa') return;
-
   document.getElementById('edit-user-id').value = u.id;
   document.getElementById('edit-user-nome').value = u.user;
   document.getElementById('edit-user-senha').value = u.senha;
   document.getElementById('edit-user-isadm').checked = u.isAdmin;
-  
   togglePermissoesUIEdit();
-  
   document.querySelectorAll('.chk-perm-edit').forEach(chk => {
     chk.checked = u.permissoes === 'ALL' ? false : u.permissoes.includes(chk.value);
   });
-
   abrirModal('modal-editar-usuario');
 }
 
@@ -773,11 +790,9 @@ function salvarEdicaoUsuario() {
   const id = parseInt(document.getElementById('edit-user-id').value);
   const u = usuarios.find(x => x.id === id);
   if (!u) return;
-
   u.user = document.getElementById('edit-user-nome').value;
   u.senha = document.getElementById('edit-user-senha').value;
   u.isAdmin = document.getElementById('edit-user-isadm').checked;
-
   if (u.isAdmin) {
     u.permissoes = 'ALL';
   } else {
@@ -785,7 +800,6 @@ function salvarEdicaoUsuario() {
     if (marcados.length === 0) return alert('❌ Escolha pelo menos 1 produto!');
     u.permissoes = marcados;
   }
-
   salvarDados('usuarios', usuarios);
   fecharModal('modal-editar-usuario');
   renderizarUsuariosAdm();
@@ -820,7 +834,6 @@ function gerarPayloadPix(chave, valor, nome, cidade) {
     '60' + (cidade.length < 10 ? '0' : '') + cidade.length + cidade +
     '62070503***' +
     '6304';
-  
   return payload + calculaCRC16(payload);
 }
 

@@ -1,0 +1,21 @@
+{
+  "name": "Sistema PDV Profissional",
+  "short_name": "Meu PDV",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#1a252f",
+  "theme_color": "#1a252f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192.png?text=PDV",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512.png?text=PDV",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
