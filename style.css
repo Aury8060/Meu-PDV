@@ -4,8 +4,8 @@
 html, body { 
   width: 100%; 
   height: 100%; 
-  height: 100dvh; /* Altura Dinâmica: ignora as barras do navegador mobile */
-  position: fixed; /* Prende o app na tela, sem puxar pra atualizar */
+  height: 100dvh; 
+  position: fixed; 
   top: 0; left: 0; right: 0; bottom: 0;
   overflow: hidden; 
   background: #f4f7f6; 
@@ -36,14 +36,14 @@ header { background: #1a252f; color: white; padding: 15px 20px; display: flex; j
 .acoes-topo { display: flex; gap: 10px; }
 
 /* CONTAINERS INTELIGENTES COM ROLAGEM INDEPENDENTE */
-.conteudo { flex: 1; display: flex; overflow: hidden; padding: 15px; gap: 15px; max-width: 1200px; margin: 0 auto; width: 100%; }
-.conteudo-adm { flex-direction: column; overflow-y: auto; padding-top: 20px; display: block; }
+.conteudo { flex: 1; display: flex; overflow: hidden; padding: 15px; gap: 15px; max-width: 1200px; margin: 0 auto; width: 100%; height: 100%; }
+.conteudo-adm { flex-direction: column; overflow-y: auto; padding-top: 20px; display: block; padding-bottom: 30px; }
 
 /* Colunas Flexíveis */
 .coluna { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 .carrinho { display: flex; flex-direction: column; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
 
-/* Área de Rolagem Específica (Só produtos e lista do carrinho rolam) */
+/* Área de Rolagem Específica */
 .area-rolagem { flex: 1; overflow-y: auto; padding-right: 5px; min-height: 0; }
 .area-rolagem::-webkit-scrollbar { width: 6px; }
 .area-rolagem::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 4px; }
@@ -80,8 +80,8 @@ button:active { transform: scale(0.97); }
 /* Login */
 .login-container { max-width: 360px; margin: auto; background: white; padding: 35px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
 
-/* Produtos Caixa */
-.grade-produtos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding-bottom: 20px; }
+/* Produtos Caixa (GRID LIMPA) */
+.grade-produtos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
 .produto-card { background: white; border-radius: 10px; text-align: center; box-shadow: 0 3px 6px rgba(0,0,0,0.06); cursor: pointer; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #eee; }
 .produto-card.esgotado { opacity: 0.5; filter: grayscale(100%); pointer-events: none; }
 .prod-img-box { width: 100%; height: 110px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; }
@@ -147,7 +147,6 @@ button:active { transform: scale(0.97); }
 /* RESPONSIVIDADE (Desktop vs Mobile)        */
 /* ========================================= */
 
-/* Desktop e Tablets maiores */
 @media (min-width: 800px) {
   .conteudo { flex-direction: row; }
   .carrinho { flex: 0 0 380px; }
@@ -155,20 +154,17 @@ button:active { transform: scale(0.97); }
   .grid-dash { grid-template-columns: 1fr 1fr; }
 }
 
-/* Celulares (Ajustes refinados para enquadrar 100%) */
 @media (max-width: 799px) {
   .conteudo { flex-direction: column; padding: 10px; gap: 10px; }
   header { padding: 10px 15px; }
   header h1 { font-size: 16px; }
   
-  /* Distribui o espaço entre produtos e carrinho na mesma tela */
   .coluna { flex: 1; }
-  .carrinho { flex: 1.1; } /* Dá um pouquinho mais de espaço pro carrinho */
+  .carrinho { flex: 1.1; }
   
   .grade-produtos { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
   .prod-img-box { height: 80px; }
   
-  /* Deixa os botões e carrinho mais enxutos para caber no mobile */
   .botoes-pagamento { gap: 8px; margin-top: 8px; }
   .botoes-pagamento button { padding: 10px; font-size: 14px; }
   .total { font-size: 20px; padding-bottom: 5px; }

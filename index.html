@@ -37,17 +37,21 @@
 
     <div class='conteudo'>
       
-      <!-- Coluna Produtos -->
+      <!-- Coluna Produtos (AJUSTADA AQUI) -->
       <div class='coluna'>
         <h2>Produtos Disponíveis</h2>
         <input type='text' id='busca' placeholder='Buscar produto...' oninput='filtrarProdutos()'>
-        <div id='lista-produtos' class='grade-produtos area-rolagem'></div>
+        
+        <!-- A mágica: caixa exclusiva para rolagem com margem no fundo -->
+        <div class='area-rolagem' style='padding-bottom: 30px;'>
+          <div id='lista-produtos' class='grade-produtos'></div>
+        </div>
       </div>
 
       <!-- Coluna Carrinho -->
       <div class='coluna carrinho'>
         <h2 style='padding: 10px 15px 0;'>Carrinho</h2>
-        <div class='area-rolagem itens-carrinho-lista' id='itens-carrinho'></div>
+        <div class='area-rolagem itens-carrinho-lista' id='itens-carrinho' style='padding-bottom: 20px;'></div>
         
         <!-- Rodapé fixo dentro do carrinho -->
         <div class='rodape-carrinho'>
@@ -200,15 +204,12 @@
     </div>
   </div>
 
-  <!-- MODAL DINHEIRO (TROCO DINÂMICO AQUI) -->
+  <!-- MODAL DINHEIRO -->
   <div id='modal-dinheiro' class='modal'>
     <div class='modal-conteudo text-center'>
       <h2>💵 Receber Dinheiro</h2>
       <p class='texto-destaque'>Total: <strong>R$ <span id='modal-dinheiro-total'>0,00</span></strong></p>
-      
-      <!-- Evento oninput para cálculo em tempo real -->
       <input type='number' step='0.01' id='valor-recebido' placeholder='Valor dado pelo cliente (R$)' oninput='calcularTrocoDinamico()'>
-      
       <div id='area-troco' class='area-troco'>Troco: <strong>R$ <span id='valor-troco'>0,00</span></strong></div>
       <div class='botoes-pagamento'>
         <button class='btn-principal' onclick='calcularTrocoEConfirmar()'>✅ Finalizar</button>
