@@ -1,21 +1,25 @@
 {
+  "id": "/",
   "name": "Sistema PDV Profissional",
   "short_name": "Meu PDV",
-  "start_url": "index.html",
+  "description": "Sistema de frente de caixa offline",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1a252f",
   "theme_color": "#1a252f",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://via.placeholder.com/192x192.png?text=PDV",
+      "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://via.placeholder.com/512x512.png?text=PDV",
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
