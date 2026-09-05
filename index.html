@@ -2,15 +2,12 @@
 <html lang='pt-BR'>
 <head>
   <meta charset='UTF-8'>
-  <!-- Trava o zoom no mobile -->
-  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'>
   <meta name='theme-color' content='#1a252f'>
   <title>Sistema PDV Completo</title>
   <link rel='stylesheet' href='style.css'>
-  <!-- Link do PWA -->
   <link rel='manifest' href='manifest.json'>
   
-  <!-- Bibliotecas: Câmera QR, Gerador QR e Excel -->
   <script src='https://unpkg.com/html5-qrcode'></script>
   <script src='https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js'></script>
   <script src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'></script>
@@ -39,18 +36,20 @@
     </header>
 
     <div class='conteudo'>
-      <div class='coluna flex-coluna'>
+      
+      <!-- Coluna Produtos -->
+      <div class='coluna'>
         <h2>Produtos Disponíveis</h2>
         <input type='text' id='busca' placeholder='Buscar produto...' oninput='filtrarProdutos()'>
-        <!-- Esta div tem rolagem própria -->
         <div id='lista-produtos' class='grade-produtos area-rolagem'></div>
       </div>
 
-      <div class='coluna carrinho flex-coluna'>
-        <h2>Carrinho</h2>
-        <!-- Esta div tem rolagem própria -->
-        <div id='itens-carrinho' class='area-rolagem'></div>
+      <!-- Coluna Carrinho -->
+      <div class='coluna carrinho'>
+        <h2 style='padding: 10px 15px 0;'>Carrinho</h2>
+        <div class='area-rolagem itens-carrinho-lista' id='itens-carrinho'></div>
         
+        <!-- Rodapé fixo dentro do carrinho -->
         <div class='rodape-carrinho'>
           <div class='total'>
             <strong>TOTAL: R$ <span id='valor-total'>0,00</span></strong>
@@ -63,6 +62,7 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
 
@@ -83,31 +83,17 @@
 
     <div class='conteudo conteudo-adm area-rolagem'>
       
-      <!-- Aba Dashboard -->
       <div id='aba-dashboard' class='aba-conteudo ativa'>
         <div class='cards-dash'>
-          <div class='card'>
-            <h3>Total Recebido</h3>
-            <p id='dash-total-geral'>R$ 0,00</p>
-          </div>
-          <div class='card'>
-            <h3>Quantidade de Vendas</h3>
-            <p id='dash-qtd-vendas'>0</p>
-          </div>
+          <div class='card'><h3>Total Recebido</h3><p id='dash-total-geral'>R$ 0,00</p></div>
+          <div class='card'><h3>Quantidade de Vendas</h3><p id='dash-qtd-vendas'>0</p></div>
         </div>
         <div class='grid-dash'>
-          <div class='grafico-container'>
-            <h3>📊 Desempenho por Usuário</h3>
-            <div id='grafico-usuarios' class='area-grafico'></div>
-          </div>
-          <div class='grafico-container'>
-            <h3>📈 Produtos Mais Vendidos</h3>
-            <div id='grafico-produtos' class='area-grafico'></div>
-          </div>
+          <div class='grafico-container'><h3>📊 Desempenho por Usuário</h3><div id='grafico-usuarios' class='area-grafico'></div></div>
+          <div class='grafico-container'><h3>📈 Produtos Mais Vendidos</h3><div id='grafico-produtos' class='area-grafico'></div></div>
         </div>
       </div>
 
-      <!-- Aba Estoque -->
       <div id='aba-estoque' class='aba-conteudo'>
         <div class='cadastro'>
           <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;'>
@@ -117,7 +103,6 @@
               <button class='btn-sec' style='color:#2c3e50; border-color:#bdc3c7;' onclick='document.getElementById(`importar-excel`).click()'>📥 Importar Excel</button>
             </div>
           </div>
-          
           <div class='form-grid'>
             <div><label>Nome</label><input type='text' id='prod-nome'></div>
             <div><label>Preço</label><input type='number' step='0.01' id='prod-preco'></div>
@@ -132,12 +117,10 @@
           </div>
           <button class='btn-principal' onclick='cadastrarProduto()'>✅ Salvar Produto</button>
         </div>
-        
         <h3 class='titulo-secao'>Estoque Atual</h3>
         <div id='tabela-estoque-adm' class='lista-registros'></div>
       </div>
 
-      <!-- Aba Usuários -->
       <div id='aba-usuarios' class='aba-conteudo'>
         <div class='cadastro'>
           <h3>➕ Cadastrar Usuário</h3>
@@ -158,13 +141,11 @@
           </div>
           <button class='btn-principal' onclick='cadastrarUsuario()'>👤 Cadastrar Funcionário</button>
         </div>
-
         <h3 class='titulo-secao'>👥 Usuários Cadastrados</h3>
         <input type='text' id='busca-usuario' placeholder='🔍 Buscar usuário...' oninput='renderizarUsuariosAdm()'>
         <div id='lista-usuarios-adm' class='grid-usuarios-cards'></div>
       </div>
 
-      <!-- Aba Configurações -->
       <div id='aba-config' class='aba-conteudo'>
         <div class='cadastro'>
           <h3>Configurações do Sistema</h3>
@@ -187,7 +168,6 @@
 
   <!-- MODAL EDITAR PRODUTO -->
   <div id='modal-editar-produto' class='modal'>
-    <!-- MANTÉM IGUAL A VERSÃO ANTERIOR -->
     <div class='modal-conteudo'>
       <h2>✏️ Editar Produto</h2>
       <input type='hidden' id='edit-prod-id'>
@@ -220,12 +200,15 @@
     </div>
   </div>
 
-  <!-- MODAL DINHEIRO (TROCO) -->
+  <!-- MODAL DINHEIRO (TROCO DINÂMICO AQUI) -->
   <div id='modal-dinheiro' class='modal'>
     <div class='modal-conteudo text-center'>
       <h2>💵 Receber Dinheiro</h2>
       <p class='texto-destaque'>Total: <strong>R$ <span id='modal-dinheiro-total'>0,00</span></strong></p>
-      <input type='number' step='0.01' id='valor-recebido' placeholder='Valor dado pelo cliente (R$)'>
+      
+      <!-- Evento oninput para cálculo em tempo real -->
+      <input type='number' step='0.01' id='valor-recebido' placeholder='Valor dado pelo cliente (R$)' oninput='calcularTrocoDinamico()'>
+      
       <div id='area-troco' class='area-troco'>Troco: <strong>R$ <span id='valor-troco'>0,00</span></strong></div>
       <div class='botoes-pagamento'>
         <button class='btn-principal' onclick='calcularTrocoEConfirmar()'>✅ Finalizar</button>

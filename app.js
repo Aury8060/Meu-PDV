@@ -9,7 +9,7 @@ let config = { chavePix: '' };
 let carrinho = [];
 let usuarioLogado = null;
 let imgBase64Temp = ''; 
-let leitorCameraQr = null; // Variável Global do Leitor da Câmera
+let leitorCameraQr = null; 
 
 // Variáveis Firebase
 let firebaseDatabase = null;
@@ -67,7 +67,6 @@ window.onload = function() {
   iniciarSistemaFirebase();
 };
 
-// Restaura os dados se o usuário apertar F5
 function restaurarEstadoDoNavegador() {
   const salvoUser = localStorage.getItem('usuarioLogado');
   
@@ -78,7 +77,6 @@ function restaurarEstadoDoNavegador() {
     const telaSalva = localStorage.getItem('telaAtual') || 'venda';
     const abaSalva = localStorage.getItem('abaAtual') || 'dashboard';
     
-    // Recarrega layout header
     document.getElementById('nome-operador').textContent = usuarioLogado.user;
     document.getElementById('btn-menu-adm').style.display = usuarioLogado.isAdmin ? 'inline-block' : 'none';
     const btnUsuarios = document.getElementById('btn-aba-usuarios');
@@ -148,8 +146,6 @@ function inicializarAdminPadrao() {
 function irPara(nomeTela) {
   document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
   document.getElementById('tela-' + nomeTela).classList.add('ativa');
-
-  // Salva no navegador caso atualize
   localStorage.setItem('telaAtual', nomeTela);
 
   if (nomeTela === 'venda') {
@@ -172,8 +168,6 @@ function mudarAbaAdm(aba) {
   const btnClicado = document.querySelector(`.aba-btn[onclick*='${aba}']`);
   if (btnClicado) btnClicado.classList.add('ativa');
   document.getElementById('aba-' + aba).classList.add('ativa');
-  
-  // Salva no navegador caso atualize
   localStorage.setItem('abaAtual', aba);
 }
 
@@ -195,12 +189,9 @@ function abrirCameraLogin() {
   const configuracao = { fps: 10, qrbox: { width: 250, height: 250 } };
   
   leitorCameraQr.start({ facingMode: 'environment' }, configuracao, (textoLido) => {
-    // Sucesso na leitura
     fecharCameraQR();
     processarLoginCachra(textoLido.trim());
-  }, (erro) => {
-    // Ignora erros de frame contínuo da câmera
-  }).catch((err) => {
+  }, (erro) => {}).catch((err) => {
     alert('❌ Erro ao acessar a Câmera: ' + err);
     fecharCameraQR();
   });
@@ -253,7 +244,7 @@ function fazerLogout() {
 }
 
 // ==========================================
-// CAIXA E CARRINHO (C/ PERSISTÊNCIA)
+// CAIXA E CARRINHO
 // ==========================================
 function renderizarProdutos(lista) {
   const container = document.getElementById('lista-produtos');
@@ -365,7 +356,7 @@ function limparCarrinho() {
 }
 
 // ==========================================
-// FLUXO DE PAGAMENTO
+// FLUXO DE PAGAMENTO (TROCO DINÂMICO AQUI)
 // ==========================================
 let formaPagamentoAtual = '';
 let valorTotalVendaAtual = 0;
@@ -379,7 +370,11 @@ function iniciarPagamento(forma) {
   if (forma === 'Dinheiro') {
     document.getElementById('modal-dinheiro-total').textContent = valorTotalVendaAtual.toFixed(2);
     document.getElementById('valor-recebido').value = '';
+    
+    // Reseta a área de troco ao abrir
     document.getElementById('area-troco').style.display = 'none';
+    document.getElementById('valor-troco').textContent = '0.00';
+    
     abrirModal('modal-dinheiro');
   } 
   else if (forma === 'Pix') {
@@ -392,21 +387,36 @@ function iniciarPagamento(forma) {
   }
 }
 
+// NOVA FUNÇÃO: Calcula o troco instantaneamente enquanto o usuário digita
+function calcularTrocoDinamico() {
+  const input = document.getElementById('valor-recebido').value;
+  const recebido = parseFloat(input.replace(',', '.'));
+  const areaTroco = document.getElementById('area-troco');
+  const spanTroco = document.getElementById('valor-troco');
+
+  if (isNaN(recebido) || recebido < valorTotalVendaAtual) {
+    areaTroco.style.display = 'none';
+    spanTroco.textContent = '0.00';
+    return;
+  }
+
+  const troco = recebido - valorTotalVendaAtual;
+  spanTroco.textContent = troco.toFixed(2);
+  areaTroco.style.display = 'block';
+}
+
 function calcularTrocoEConfirmar() {
   const input = document.getElementById('valor-recebido').value;
   const recebido = parseFloat(input.replace(',', '.'));
-  if (isNaN(recebido) || recebido < valorTotalVendaAtual) return alert('❌ Valor inserido é inválido ou menor que o total.');
   
-  const troco = recebido - valorTotalVendaAtual;
-  document.getElementById('valor-troco').textContent = troco.toFixed(2);
-  document.getElementById('area-troco').style.display = 'block';
+  if (isNaN(recebido) || recebido < valorTotalVendaAtual) {
+    return alert('❌ Valor inserido é inválido ou menor que o total.');
+  }
 
-  setTimeout(() => {
-    if (confirm('✅ Você entregou o troco ao cliente? Pressione OK para finalizar a venda.')) {
-      fecharModal('modal-dinheiro');
-      confirmarVendaFeita('Dinheiro');
-    }
-  }, 500);
+  if (confirm('✅ Você entregou o troco ao cliente? Pressione OK para finalizar a venda.')) {
+    fecharModal('modal-dinheiro');
+    confirmarVendaFeita('Dinheiro');
+  }
 }
 
 function gerarInterfacePix(valor) {
@@ -463,7 +473,7 @@ function confirmarVendaFeita(formaPagamento) {
 }
 
 // ==========================================
-// PAINEL ADM - DASHBOARD
+// PAINEL ADM - DASHBOARD E ESTOQUE
 // ==========================================
 function renderizarDashboard() {
   let totalGeral = 0;
@@ -507,9 +517,6 @@ function renderizarDashboard() {
   }
 }
 
-// ==========================================
-// ESTOQUE CRUD
-// ==========================================
 function converterImagemBase64(event, imgPreviewId) {
   const file = event.target.files[0];
   if (!file) return;
@@ -662,7 +669,7 @@ function importarExcel(event) {
 }
 
 // ==========================================
-// USUÁRIOS CRUD
+// USUÁRIOS E CONFIGURAÇÕES CRUD
 // ==========================================
 function atualizarCheckboxesPermissoes() {
   const renderCheckboxes = (containerId, cssClass) => {
@@ -813,9 +820,6 @@ function excluirUsuario(id) {
   }
 }
 
-// ==========================================
-// CONFIG E PIX
-// ==========================================
 function salvarConfig() {
   config.chavePix = document.getElementById('config-chave-pix').value.trim();
   salvarDados('config', config);
