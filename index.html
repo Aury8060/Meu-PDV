@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang='pt-BR'>
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>Sistema PDV Completo</title>
+  <link rel='stylesheet' href='style.css'>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'></script>
+</head>
+<body>
+
+  <!-- TELA DE LOGIN -->
+  <div id='tela-login' class='tela ativa'>
+    <div class='login-container'>
+      <h2>🔐 Acesso ao Sistema</h2>
+      <input type='text' id='login-user' placeholder='Usuário'>
+      <input type='password' id='login-senha' placeholder='Senha'>
+      <button class='btn-principal' onclick='fazerLogin()'>Entrar</button>
+      <button class='btn-sec btn-bloco' onclick='escanearQRLogin()'>📷 Entrar com QR Code</button>
+    </div>
+  </div>
+
+  <!-- TELA DE VENDA (CAIXA) -->
+  <div id='tela-venda' class='tela'>
+    <header>
+      <h1>🛒 Caixa - Operador: <span id='nome-operador'></span></h1>
+      <div class='acoes-topo'>
+        <button class='btn-sec' id='btn-menu-adm' style='display: none;' onclick='irPara(`adm`)'>⚙️ Painel ADM</button>
+        <button class='btn-perigo' onclick='fazerLogout()'>Sair</button>
+      </div>
+    </header>
+
+    <div class='conteudo'>
+      <div class='coluna'>
+        <h2>Produtos Disponíveis</h2>
+        <input type='text' id='busca' placeholder='Buscar produto...' oninput='filtrarProdutos()'>
+        <div id='lista-produtos' class='grade-produtos'></div>
+      </div>
+
+      <div class='coluna carrinho'>
+        <h2>Carrinho</h2>
+        <div id='itens-carrinho'></div>
+        <div class='total'>
+          <strong>TOTAL: R$ <span id='valor-total'>0,00</span></strong>
+        </div>
+
+        <div class='botoes-pagamento'>
+          <button class='btn-pix' onclick='iniciarPagamento(`Pix`)'>📱 Pix</button>
+          <button class='btn-cartao' onclick='iniciarPagamento(`Cartão`)'>💳 Cartão</button>
+          <button class='btn-dinheiro' onclick='iniciarPagamento(`Dinheiro`)'>💵 Dinheiro</button>
+          <button class='btn-limpar' onclick='limparCarrinho()'>🗑️ Limpar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA DE ADMINISTRAÇÃO -->
+  <div id='tela-adm' class='tela'>
+    <header class='header-adm-fixo'>
+      <div class='header-topo'>
+        <h1>⚙️ Painel Administrativo</h1>
+        <button class='btn-sec' onclick='irPara(`venda`)'>🛒 Voltar ao Caixa</button>
+      </div>
+      <nav class='menu-superior'>
+        <button class='aba-btn ativa' onclick='mudarAbaAdm(`dashboard`)'>📊 Dashboard</button>
+        <button class='aba-btn' onclick='mudarAbaAdm(`estoque`)'>📦 Estoque</button>
+        <button class='aba-btn' id='btn-aba-usuarios' onclick='mudarAbaAdm(`usuarios`)'>👥 Usuários</button>
+        <button class='aba-btn' onclick='mudarAbaAdm(`config`)'>🔧 Configurações</button>
+      </nav>
+    </header>
+
+    <div class='conteudo conteudo-adm'>
+      
+      <!-- Aba Dashboard -->
+      <div id='aba-dashboard' class='aba-conteudo ativa'>
+        <div class='cards-dash'>
+          <div class='card'>
+            <h3>Total Recebido</h3>
+            <p id='dash-total-geral'>R$ 0,00</p>
+          </div>
+          <div class='card'>
+            <h3>Quantidade de Vendas</h3>
+            <p id='dash-qtd-vendas'>0</p>
+          </div>
+        </div>
+        <div class='grid-dash'>
+          <div class='grafico-container'>
+            <h3>📊 Desempenho por Usuário</h3>
+            <div id='grafico-usuarios' class='area-grafico'></div>
+          </div>
+          <div class='grafico-container'>
+            <h3>📈 Produtos Mais Vendidos</h3>
+            <div id='grafico-produtos' class='area-grafico'></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba Estoque -->
+      <div id='aba-estoque' class='aba-conteudo'>
+        <div class='cadastro'>
+          <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;'>
+            <h3 style='margin: 0;'>Cadastrar Novo Produto</h3>
+            <div>
+              <input type='file' id='importar-excel' accept='.xlsx, .xls' style='display: none;' onchange='importarExcel(event)'>
+              <button class='btn-sec' style='color:#2c3e50; border-color:#bdc3c7;' onclick='document.getElementById(`importar-excel`).click()'>📥 Importar do Excel (.xlsx)</button>
+            </div>
+          </div>
+          
+          <div class='form-grid'>
+            <div>
+              <label>Nome do Produto</label>
+              <input type='text' id='prod-nome' placeholder='Ex: Bolo de Chocolate'>
+            </div>
+            <div>
+              <label>Preço (R$)</label>
+              <input type='number' step='0.01' id='prod-preco' placeholder='Ex: 15.50'>
+            </div>
+            <div>
+              <label>Qtd Inicial</label>
+              <input type='number' id='prod-qtd' placeholder='Ex: 10'>
+            </div>
+            <div>
+              <label>Foto do Produto (Arquivo Local)</label>
+              <input type='file' id='prod-imagem-file' accept='image/*' style='margin-bottom: 5px;' onchange='converterImagemBase64(event, `preview-img-cadastro`)'>
+              <label>Ou insira um Link (URL)</label>
+              <input type='text' id='prod-imagem-url' placeholder='http://link-da-imagem.com/foto.jpg' oninput='carregarImagemUrl(this.value, `preview-img-cadastro`)'>
+              <img id='preview-img-cadastro' class='img-preview' src='' alt='Sem foto'>
+            </div>
+          </div>
+          <button class='btn-principal' onclick='cadastrarProduto()'>✅ Salvar Produto</button>
+        </div>
+        
+        <h3 class='titulo-secao'>Estoque Atual</h3>
+        <div id='tabela-estoque-adm' class='lista-registros'></div>
+      </div>
+
+      <!-- Aba Usuários -->
+      <div id='aba-usuarios' class='aba-conteudo'>
+        <div class='cadastro'>
+          <h3>➕ Cadastrar Usuário</h3>
+          <div class='form-grid'>
+            <div>
+              <label>Nome de Usuário (Login)</label>
+              <input type='text' id='novo-user' placeholder='Ex: joao.silva'>
+            </div>
+            <div>
+              <label>Senha de Acesso</label>
+              <input type='text' id='novo-senha' placeholder='Senha'>
+            </div>
+          </div>
+          
+          <label class='switch-container'>
+            <input type='checkbox' id='novo-isadm' onchange='togglePermissoesUI()'> Dar acesso total de Administrador
+          </label>
+          
+          <div id='bloco-permissoes-container' class='bloco-permissoes'>
+            <div class='perm-header'>
+              <span><strong>Permissões de Venda</strong> (Selecione o que ele pode vender)</span>
+              <div>
+                <button class='btn-micro' onclick='marcarPermissoes(true)'>Marcar Todos</button>
+                <button class='btn-micro' onclick='marcarPermissoes(false)'>Limpar</button>
+              </div>
+            </div>
+            <div id='permissoes-produtos' class='grid-permissoes'></div>
+          </div>
+          <button class='btn-principal' onclick='cadastrarUsuario()'>👤 Cadastrar Funcionário</button>
+        </div>
+
+        <h3 class='titulo-secao'>👥 Usuários Cadastrados</h3>
+        <input type='text' id='busca-usuario' placeholder='🔍 Buscar usuário por nome...' oninput='renderizarUsuariosAdm()'>
+        <div id='lista-usuarios-adm' class='grid-usuarios-cards'></div>
+      </div>
+
+      <!-- Aba Configurações -->
+      <div id='aba-config' class='aba-conteudo'>
+        <div class='cadastro'>
+          <h3>Configurações do Sistema</h3>
+          <label>Sua Chave Pix Recebedora (CPF, CNPJ, Email, Celular):</label>
+          <input type='text' id='config-chave-pix' placeholder='Chave Pix para o QR Code'>
+          <button class='btn-principal' onclick='salvarConfig()'>💾 Salvar Configurações</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL EDITAR PRODUTO -->
+  <div id='modal-editar-produto' class='modal'>
+    <div class='modal-conteudo'>
+      <h2>✏️ Editar Produto</h2>
+      <input type='hidden' id='edit-prod-id'>
+      <label>Nome</label>
+      <input type='text' id='edit-prod-nome'>
+      <label>Preço (R$)</label>
+      <input type='number' step='0.01' id='edit-prod-preco'>
+      <label>Quantidade</label>
+      <input type='number' id='edit-prod-qtd'>
+      
+      <label>Alterar Foto (Arquivo Local)</label>
+      <input type='file' id='edit-prod-file' accept='image/*' style='margin-bottom: 5px;' onchange='converterImagemBase64(event, `preview-img-edit`)'>
+      <label>Ou insira um Link (URL)</label>
+      <input type='text' id='edit-prod-url' placeholder='http://link-da-imagem.com/foto.jpg' oninput='carregarImagemUrl(this.value, `preview-img-edit`)'>
+      
+      <img id='preview-img-edit' class='img-preview' src='' alt=''>
+      
+      <div class='botoes-pagamento'>
+        <button class='btn-principal' onclick='salvarEdicaoProduto()'>💾 Salvar</button>
+        <button class='btn-limpar' onclick='fecharModal(`modal-editar-produto`)'>❌ Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDITAR USUÁRIO -->
+  <div id='modal-editar-usuario' class='modal'>
+    <div class='modal-conteudo'>
+      <h2>✏️ Editar Usuário</h2>
+      <input type='hidden' id='edit-user-id'>
+      <label>Nome (Login)</label>
+      <input type='text' id='edit-user-nome'>
+      <label>Nova Senha</label>
+      <input type='text' id='edit-user-senha'>
+      <label class='switch-container'>
+        <input type='checkbox' id='edit-user-isadm' onchange='togglePermissoesUIEdit()'> Administrador?
+      </label>
+      
+      <div id='bloco-permissoes-edit' class='bloco-permissoes' style='max-height: 200px; overflow-y:auto;'></div>
+
+      <div class='botoes-pagamento'>
+        <button class='btn-principal' onclick='salvarEdicaoUsuario()'>💾 Salvar</button>
+        <button class='btn-limpar' onclick='fecharModal(`modal-editar-usuario`)'>❌ Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DINHEIRO -->
+  <div id='modal-dinheiro' class='modal'>
+    <div class='modal-conteudo text-center'>
+      <h2>💵 Receber Dinheiro</h2>
+      <p class='texto-destaque'>Total: <strong>R$ <span id='modal-dinheiro-total'>0,00</span></strong></p>
+      <input type='number' step='0.01' id='valor-recebido' placeholder='Valor dado pelo cliente (R$)'>
+      <div id='area-troco' class='area-troco'>
+        Troco: <strong>R$ <span id='valor-troco'>0,00</span></strong>
+      </div>
+      <div class='botoes-pagamento'>
+        <button class='btn-principal' onclick='calcularTrocoEConfirmar()'>✅ Finalizar</button>
+        <button class='btn-limpar' onclick='fecharModal(`modal-dinheiro`)'>❌ Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PIX -->
+  <div id='modal-pix' class='modal'>
+    <div class='modal-conteudo text-center'>
+      <h2>📱 Pagamento via Pix</h2>
+      <p class='texto-destaque' style='color:#27ae60;'>Total: <strong>R$ <span id='modal-pix-total'>0,00</span></strong></p>
+      <div class='qr-wrap'>
+        <canvas id='canvas-qrcode'></canvas>
+      </div>
+      <label style='font-size: 12px; text-align: left;'>Pix Copia e Cola:</label>
+      <input type='text' id='pix-copia-cola' readonly>
+      <div class='botoes-pagamento'>
+        <button class='btn-principal' onclick='confirmarVendaFeita(`Pix`)'>✅ Pagamento Recebido</button>
+        <button class='btn-limpar' onclick='fecharModal(`modal-pix`)'>❌ Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src='app.js'></script>
+</body>
+</html>
