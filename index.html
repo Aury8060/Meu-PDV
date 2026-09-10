@@ -1,68 +1,86 @@
 <!DOCTYPE html>
-<html lang='pt-BR'>
+<html lang="pt-BR">
 <head>
-  <meta charset='UTF-8'>
-  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'>
-  <meta name='theme-color' content='#1a252f'>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1a252f">
   <title>Sistema PDV Completo</title>
-  <link rel='stylesheet' href='style.css'>
-  <link rel='manifest' href='manifest.json'>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
   
-  <script src='https://unpkg.com/html5-qrcode'></script>
-  <script src='https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js'></script>
-  <script src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
   <!-- TELA DE LOGIN -->
-  <div id='tela-login' class='tela ativa'>
-    <div class='login-container'>
+  <div id="tela-login" class="tela ativa">
+    <div class="login-container">
       <h2>🔐 Acesso ao Sistema</h2>
-      <input type='text' id='login-user' placeholder='Usuário'>
-      <input type='password' id='login-senha' placeholder='Senha'>
-      <button class='btn-principal' onclick='fazerLogin()'>Entrar</button>
-      <button class='btn-sec btn-bloco' onclick='abrirCameraLogin()'>📷 Entrar com Câmera (QR Code)</button>
+      <input type="text" id="login-user" placeholder="Usuário">
+      <input type="password" id="login-senha" placeholder="Senha">
+      <button class="btn-principal" onclick="fazerLogin()">Entrar</button>
+      <button class="btn-sec btn-bloco" onclick="abrirCameraLogin()">📷 Entrar com Câmera (QR Code)</button>
+    </div>
+  </div>
+
+  <!-- TELA DO ENTREGADOR (EXCLUSIVA) -->
+  <div id="tela-entregador" class="tela">
+    <header class="header-adm-fixo">
+      <div class="header-topo">
+        <h1>🏍️ Entregador: <span id="nome-entregador"></span></h1>
+        <button class="btn-perigo" onclick="fazerLogout()">Sair</button>
+      </div>
+      <div style="background: #34495e; padding: 10px 20px; text-align: center;">
+        <label class="switch-container" style="color: white; justify-content: center; margin: 0; background: transparent;">
+          <input type="checkbox" id="status-livre" onchange="mudarStatusEntregador()"> Estou Livre para Entregas
+        </label>
+      </div>
+    </header>
+    <div class="conteudo area-rolagem">
+      <h2 class="titulo-secao" style="margin-top:0;">📦 Minhas Entregas Pendentes</h2>
+      <div id="lista-entregas-pendentes"></div>
     </div>
   </div>
 
   <!-- TELA DE VENDA (CAIXA) -->
-  <div id='tela-venda' class='tela'>
+  <div id="tela-venda" class="tela">
     <header>
-      <h1>🛒 Caixa - Operador: <span id='nome-operador'></span></h1>
-      <div class='acoes-topo'>
-        <button class='btn-sec' id='btn-menu-adm' style='display: none;' onclick='irPara(`adm`)'>⚙️ Painel ADM</button>
-        <button class='btn-perigo' onclick='fazerLogout()'>Sair</button>
+      <h1>🛒 Caixa - Operador: <span id="nome-operador"></span></h1>
+      <div class="acoes-topo">
+        <button class="btn-sec" id="btn-menu-adm" style="display: none;" onclick="irPara('adm')">⚙️ Painel ADM</button>
+        <button class="btn-perigo" onclick="fazerLogout()">Sair</button>
       </div>
     </header>
 
-    <div class='conteudo'>
+    <div class="conteudo">
       
-      <!-- Coluna Produtos (AJUSTADA AQUI) -->
-      <div class='coluna'>
+      <!-- Coluna Produtos -->
+      <div class="coluna">
         <h2>Produtos Disponíveis</h2>
-        <input type='text' id='busca' placeholder='Buscar produto...' oninput='filtrarProdutos()'>
-        
-        <!-- A mágica: caixa exclusiva para rolagem com margem no fundo -->
-        <div class='area-rolagem' style='padding-bottom: 30px;'>
-          <div id='lista-produtos' class='grade-produtos'></div>
+        <input type="text" id="busca" placeholder="Buscar produto..." oninput="filtrarProdutos()">
+        <div class="area-rolagem" style="padding-bottom: 30px;">
+          <div id="lista-produtos" class="grade-produtos"></div>
         </div>
       </div>
 
       <!-- Coluna Carrinho -->
-      <div class='coluna carrinho'>
-        <h2 style='padding: 10px 15px 0;'>Carrinho</h2>
-        <div class='area-rolagem itens-carrinho-lista' id='itens-carrinho' style='padding-bottom: 20px;'></div>
+      <div class="coluna carrinho">
+        <h2 style="padding: 10px 15px 0;">Carrinho</h2>
+        <div class="area-rolagem itens-carrinho-lista" id="itens-carrinho" style="padding-bottom: 20px;"></div>
         
         <!-- Rodapé fixo dentro do carrinho -->
-        <div class='rodape-carrinho'>
-          <div class='total'>
-            <strong>TOTAL: R$ <span id='valor-total'>0,00</span></strong>
+        <div class="rodape-carrinho">
+          <div class="total">
+            <strong>TOTAL: R$ <span id="valor-total">0,00</span></strong>
           </div>
-          <div class='botoes-pagamento'>
-            <button class='btn-pix' onclick='iniciarPagamento(`Pix`)'>📱 Pix</button>
-            <button class='btn-cartao' onclick='iniciarPagamento(`Cartão`)'>💳 Cartão</button>
-            <button class='btn-dinheiro' onclick='iniciarPagamento(`Dinheiro`)'>💵 Dinheiro</button>
-            <button class='btn-limpar' onclick='limparCarrinho()'>🗑️ Limpar</button>
+          <div class="botoes-pagamento">
+            <button class="btn-pix" onclick="iniciarPagamento('Pix')">📱 Pix</button>
+            <button class="btn-cartao" onclick="iniciarPagamento('Cartão')">💳 Cartão</button>
+            <button class="btn-dinheiro" onclick="iniciarPagamento('Dinheiro')">💵 Dinheiro</button>
+            <button class="btn-limpar" onclick="limparCarrinho()">🗑️ Limpar</button>
+            <button class="btn-delivery" id="btn-delivery-cart" style="grid-column: span 2; display: none;" onclick="abrirModalDelivery()">🛵 Despachar Delivery</button>
           </div>
         </div>
       </div>
@@ -71,168 +89,237 @@
   </div>
 
   <!-- TELA DE ADMINISTRAÇÃO -->
-  <div id='tela-adm' class='tela'>
-    <header class='header-adm-fixo'>
-      <div class='header-topo'>
+  <div id="tela-adm" class="tela">
+    <header class="header-adm-fixo">
+      <div class="header-topo">
         <h1>⚙️ Painel Administrativo</h1>
-        <button class='btn-sec' onclick='irPara(`venda`)'>🛒 Voltar ao Caixa</button>
+        <button class="btn-sec" onclick="irPara('venda')">🛒 Voltar ao Caixa</button>
       </div>
-      <nav class='menu-superior'>
-        <button class='aba-btn ativa' onclick='mudarAbaAdm(`dashboard`)'>📊 Dashboard</button>
-        <button class='aba-btn' onclick='mudarAbaAdm(`estoque`)'>📦 Estoque</button>
-        <button class='aba-btn' id='btn-aba-usuarios' onclick='mudarAbaAdm(`usuarios`)'>👥 Usuários</button>
-        <button class='aba-btn' onclick='mudarAbaAdm(`config`)'>🔧 Configurações</button>
+      <nav class="menu-superior">
+        <button class="aba-btn ativa" onclick="mudarAbaAdm('dashboard')">📊 Dashboard</button>
+        <button class="aba-btn" onclick="mudarAbaAdm('estoque')">📦 Estoque</button>
+        <button class="aba-btn" id="btn-aba-usuarios" onclick="mudarAbaAdm('usuarios')">👥 Usuários</button>
+        <button class="aba-btn" onclick="mudarAbaAdm('config')">🔧 Configurações</button>
       </nav>
     </header>
 
-    <div class='conteudo conteudo-adm area-rolagem'>
+    <div class="conteudo conteudo-adm area-rolagem">
       
-      <div id='aba-dashboard' class='aba-conteudo ativa'>
-        <div class='cards-dash'>
-          <div class='card'><h3>Total Recebido</h3><p id='dash-total-geral'>R$ 0,00</p></div>
-          <div class='card'><h3>Quantidade de Vendas</h3><p id='dash-qtd-vendas'>0</p></div>
+      <div id="aba-dashboard" class="aba-conteudo ativa">
+        <div class="cards-dash">
+          <div class="card"><h3>Total Recebido</h3><p id="dash-total-geral">R$ 0,00</p></div>
+          <div class="card"><h3>Quantidade de Vendas</h3><p id="dash-qtd-vendas">0</p></div>
         </div>
-        <div class='grid-dash'>
-          <div class='grafico-container'><h3>📊 Desempenho por Usuário</h3><div id='grafico-usuarios' class='area-grafico'></div></div>
-          <div class='grafico-container'><h3>📈 Produtos Mais Vendidos</h3><div id='grafico-produtos' class='area-grafico'></div></div>
+        
+        <h3 class="titulo-secao" style="margin-top: 0;">📊 Vendas e Pagamentos</h3>
+        <div class="grid-dash">
+          <div class="grafico-container"><h3>💳 Formas de Pagamento</h3><div id="grafico-pagamentos" class="area-grafico"></div></div>
+          <div class="grafico-container"><h3>👥 Vendas por Usuário</h3><div id="grafico-usuarios" class="area-grafico"></div></div>
+          <div class="grafico-container"><h3>📈 Produtos Mais Vendidos</h3><div id="grafico-produtos" class="area-grafico"></div></div>
+        </div>
+
+        <h3 class="titulo-secao">🛵 Relatórios de Delivery</h3>
+        <div class="grid-dash" style="margin-top: 15px;">
+          <div class="grafico-container">
+            <h3>Entregas por Entregador</h3>
+            <div id="grafico-entregadores" class="area-grafico"></div>
+          </div>
+          <div class="grafico-container">
+            <h3>Tempo Médio de Entrega (Minutos)</h3>
+            <div id="grafico-tempo-entrega" class="area-grafico"></div>
+          </div>
         </div>
       </div>
 
-      <div id='aba-estoque' class='aba-conteudo'>
-        <div class='cadastro'>
-          <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;'>
-            <h3 style='margin: 0;'>Cadastrar Novo Produto</h3>
+      <div id="aba-estoque" class="aba-conteudo">
+        <div class="cadastro">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">Cadastrar Novo Produto</h3>
             <div>
-              <input type='file' id='importar-excel' accept='.xlsx, .xls' style='display: none;' onchange='importarExcel(event)'>
-              <button class='btn-sec' style='color:#2c3e50; border-color:#bdc3c7;' onclick='document.getElementById(`importar-excel`).click()'>📥 Importar Excel</button>
+              <input type="file" id="importar-excel" accept=".xlsx, .xls" style="display: none;" onchange="importarExcel(event)">
+              <button class="btn-sec" style="color:#2c3e50; border-color:#bdc3c7;" onclick="document.getElementById('importar-excel').click()">📥 Importar Excel</button>
             </div>
           </div>
-          <div class='form-grid'>
-            <div><label>Nome</label><input type='text' id='prod-nome'></div>
-            <div><label>Preço</label><input type='number' step='0.01' id='prod-preco'></div>
-            <div><label>Quantidade</label><input type='number' id='prod-qtd'></div>
+          <div class="form-grid">
+            <div><label>Nome</label><input type="text" id="prod-nome"></div>
+            <div><label>Preço</label><input type="number" step="0.01" id="prod-preco"></div>
+            <div><label>Quantidade</label><input type="number" id="prod-qtd"></div>
             <div>
               <label>Foto (Arquivo)</label>
-              <input type='file' id='prod-imagem-file' accept='image/*' onchange='converterImagemBase64(event, `preview-img-cadastro`)'>
+              <input type="file" id="prod-imagem-file" accept="image/*" onchange="converterImagemBase64(event, 'preview-img-cadastro')">
               <label>Ou Link (URL)</label>
-              <input type='text' id='prod-imagem-url' oninput='carregarImagemUrl(this.value, `preview-img-cadastro`)'>
-              <img id='preview-img-cadastro' class='img-preview' src='' alt=''>
+              <input type="text" id="prod-imagem-url" oninput="carregarImagemUrl(this.value, 'preview-img-cadastro')">
+              <img id="preview-img-cadastro" class="img-preview" src="" alt="">
             </div>
           </div>
-          <button class='btn-principal' onclick='cadastrarProduto()'>✅ Salvar Produto</button>
+          <button class="btn-principal" onclick="cadastrarProduto()">✅ Salvar Produto</button>
         </div>
-        <h3 class='titulo-secao'>Estoque Atual</h3>
-        <div id='tabela-estoque-adm' class='lista-registros'></div>
+        <h3 class="titulo-secao">Estoque Atual</h3>
+        <div id="tabela-estoque-adm" class="lista-registros"></div>
       </div>
 
-      <div id='aba-usuarios' class='aba-conteudo'>
-        <div class='cadastro'>
-          <h3>➕ Cadastrar Usuário</h3>
-          <div class='form-grid'>
-            <div><label>Nome (Login)</label><input type='text' id='novo-user'></div>
-            <div><label>Senha</label><input type='text' id='novo-senha'></div>
+      <div id="aba-usuarios" class="aba-conteudo">
+        <div class="cadastro">
+          <h3>➕ Cadastrar Novo Membro da Equipe</h3>
+          <div class="form-grid">
+            <div><label>Nome (Login)</label><input type="text" id="novo-user"></div>
+            <div><label>Senha</label><input type="text" id="novo-senha"></div>
+            <div>
+              <label>Perfil de Acesso</label>
+              <select id="novo-perfil" class="select-custom" onchange="togglePermissoesUI()">
+                <option value="caixa">👤 Caixa (Padrão)</option>
+                <option value="atendente_delivery">🎧 Atendente de Delivery</option>
+                <option value="entregador">🏍️ Entregador</option>
+                <option value="admin">🛡️ Administrador</option>
+              </select>
+            </div>
           </div>
-          <label class='switch-container'><input type='checkbox' id='novo-isadm' onchange='togglePermissoesUI()'> Dar acesso de Administrador</label>
-          <div id='bloco-permissoes-container' class='bloco-permissoes'>
-            <div class='perm-header'>
-              <span><strong>Permissões de Venda</strong></span>
+          <div id="bloco-permissoes-container" class="bloco-permissoes">
+            <div class="perm-header">
+              <span><strong>Permissões de Venda</strong> (Para Caixas e Atendentes)</span>
               <div>
-                <button class='btn-micro' onclick='marcarPermissoes(true)'>Marcar Todos</button>
-                <button class='btn-micro' onclick='marcarPermissoes(false)'>Limpar</button>
+                <button class="btn-micro" onclick="marcarPermissoes(true)">Marcar Todos</button>
+                <button class="btn-micro" onclick="marcarPermissoes(false)">Limpar</button>
               </div>
             </div>
-            <div id='permissoes-produtos' class='grid-permissoes'></div>
+            <div id="permissoes-produtos" class="grid-permissoes"></div>
           </div>
-          <button class='btn-principal' onclick='cadastrarUsuario()'>👤 Cadastrar Funcionário</button>
+          <button class="btn-principal" onclick="cadastrarUsuario()">👤 Salvar Usuário</button>
         </div>
-        <h3 class='titulo-secao'>👥 Usuários Cadastrados</h3>
-        <input type='text' id='busca-usuario' placeholder='🔍 Buscar usuário...' oninput='renderizarUsuariosAdm()'>
-        <div id='lista-usuarios-adm' class='grid-usuarios-cards'></div>
+        <h3 class="titulo-secao">👥 Equipe Cadastrada</h3>
+        <input type="text" id="busca-usuario" placeholder="🔍 Buscar usuário..." oninput="renderizarUsuariosAdm()">
+        <div id="lista-usuarios-adm" class="grid-usuarios-cards"></div>
       </div>
 
-      <div id='aba-config' class='aba-conteudo'>
-        <div class='cadastro'>
+      <div id="aba-config" class="aba-conteudo">
+        <div class="cadastro">
           <h3>Configurações do Sistema</h3>
           <label>Sua Chave Pix:</label>
-          <input type='text' id='config-chave-pix'>
-          <button class='btn-principal' onclick='salvarConfig()'>💾 Salvar Configurações</button>
+          <input type="text" id="config-chave-pix">
+          <button class="btn-principal" onclick="salvarConfig()">💾 Salvar Configurações</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DELIVERY -->
+  <div id="modal-delivery" class="modal">
+    <div class="modal-conteudo">
+      <h2>🛵 Despachar Pedido</h2>
+      <label>Endereço Completo do Cliente</label>
+      <input type="text" id="delivery-endereco" placeholder="Rua, Número, Bairro, Referência">
+      
+      <label>Status do Pagamento</label>
+      <select id="delivery-pagamento" class="select-custom">
+        <option value="pagar_entrega">⚠️ Cobrar na Entrega (Entregador recebe)</option>
+        <option value="Pix">✅ Já Pago na Loja - Pix</option>
+        <option value="Cartão">✅ Já Pago na Loja - Cartão</option>
+        <option value="Dinheiro">✅ Já Pago na Loja - Dinheiro</option>
+      </select>
+
+      <label>Selecionar Entregador Livre</label>
+      <select id="delivery-entregador" class="select-custom"></select>
+      
+      <div class="botoes-pagamento">
+        <button class="btn-delivery" onclick="confirmarDelivery()">✅ Enviar Pedido</button>
+        <button class="btn-limpar" onclick="fecharModal('modal-delivery')">❌ Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PAGAMENTO ENTREGADOR -->
+  <div id="modal-entregador-pagamento" class="modal">
+    <div class="modal-conteudo text-center">
+      <h2>💰 Cobrar Cliente</h2>
+      <p class="texto-destaque">Total a Receber: <strong>R$ <span id="entregador-total-cobrar">0,00</span></strong></p>
+      <input type="hidden" id="entregador-id-entrega">
+      <div class="botoes-pagamento">
+        <button class="btn-pix" onclick="entregadorCobrar('Pix')">📱 Gerar Pix</button>
+        <button class="btn-cartao" onclick="entregadorCobrar('Cartão')">💳 Maquininha</button>
+        <button class="btn-dinheiro" onclick="entregadorCobrar('Dinheiro')">💵 Dinheiro</button>
+        <button class="btn-limpar" onclick="fecharModal('modal-entregador-pagamento')">❌ Cancelar</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL CÂMERA QR CODE -->
-  <div id='modal-camera' class='modal'>
-    <div class='modal-conteudo text-center' style='width: 95%; max-width: 500px;'>
+  <div id="modal-camera" class="modal">
+    <div class="modal-conteudo text-center" style="width: 95%; max-width: 500px;">
       <h2>📷 Aponte para o Crachá</h2>
-      <div id='leitor-camera' style='width: 100%; margin: 15px auto; border-radius: 8px; overflow: hidden;'></div>
-      <button class='btn-limpar' onclick='fecharCameraQR()'>❌ Cancelar</button>
+      <div id="leitor-camera" style="width: 100%; margin: 15px auto; border-radius: 8px; overflow: hidden;"></div>
+      <button class="btn-limpar" onclick="fecharCameraQR()">❌ Cancelar</button>
     </div>
   </div>
 
   <!-- MODAL EDITAR PRODUTO -->
-  <div id='modal-editar-produto' class='modal'>
-    <div class='modal-conteudo'>
+  <div id="modal-editar-produto" class="modal">
+    <div class="modal-conteudo">
       <h2>✏️ Editar Produto</h2>
-      <input type='hidden' id='edit-prod-id'>
-      <label>Nome</label><input type='text' id='edit-prod-nome'>
-      <label>Preço</label><input type='number' step='0.01' id='edit-prod-preco'>
-      <label>Quantidade</label><input type='number' id='edit-prod-qtd'>
-      <label>Alterar Foto</label><input type='file' id='edit-prod-file' accept='image/*' onchange='converterImagemBase64(event, `preview-img-edit`)'>
-      <label>Ou Link (URL)</label><input type='text' id='edit-prod-url' oninput='carregarImagemUrl(this.value, `preview-img-edit`)'>
-      <img id='preview-img-edit' class='img-preview' src='' alt=''>
-      <div class='botoes-pagamento'>
-        <button class='btn-principal' onclick='salvarEdicaoProduto()'>💾 Salvar</button>
-        <button class='btn-limpar' onclick='fecharModal(`modal-editar-produto`)'>❌ Cancelar</button>
+      <input type="hidden" id="edit-prod-id">
+      <label>Nome</label><input type="text" id="edit-prod-nome">
+      <label>Preço</label><input type="number" step="0.01" id="edit-prod-preco">
+      <label>Quantidade</label><input type="number" id="edit-prod-qtd">
+      <label>Alterar Foto</label><input type="file" id="edit-prod-file" accept="image/*" onchange="converterImagemBase64(event, 'preview-img-edit')">
+      <label>Ou Link (URL)</label><input type="text" id="edit-prod-url" oninput="carregarImagemUrl(this.value, 'preview-img-edit')">
+      <img id="preview-img-edit" class="img-preview" src="" alt="">
+      <div class="botoes-pagamento">
+        <button class="btn-principal" onclick="salvarEdicaoProduto()">💾 Salvar</button>
+        <button class="btn-limpar" onclick="fecharModal('modal-editar-produto')">❌ Cancelar</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL EDITAR USUÁRIO -->
-  <div id='modal-editar-usuario' class='modal'>
-    <div class='modal-conteudo'>
+  <div id="modal-editar-usuario" class="modal">
+    <div class="modal-conteudo">
       <h2>✏️ Editar Usuário</h2>
-      <input type='hidden' id='edit-user-id'>
-      <label>Nome (Login)</label><input type='text' id='edit-user-nome'>
-      <label>Nova Senha</label><input type='text' id='edit-user-senha'>
-      <label class='switch-container'><input type='checkbox' id='edit-user-isadm' onchange='togglePermissoesUIEdit()'> Administrador?</label>
-      <div id='bloco-permissoes-edit' class='bloco-permissoes' style='max-height: 200px; overflow-y:auto;'></div>
-      <div class='botoes-pagamento'>
-        <button class='btn-principal' onclick='salvarEdicaoUsuario()'>💾 Salvar</button>
-        <button class='btn-limpar' onclick='fecharModal(`modal-editar-usuario`)'>❌ Cancelar</button>
+      <input type="hidden" id="edit-user-id">
+      <label>Nome (Login)</label><input type="text" id="edit-user-nome">
+      <label>Nova Senha</label><input type="text" id="edit-user-senha">
+      <label>Perfil de Acesso</label>
+      <select id="edit-user-perfil" class="select-custom" onchange="togglePermissoesUIEdit()">
+        <option value="caixa">👤 Caixa (Padrão)</option>
+        <option value="atendente_delivery">🎧 Atendente de Delivery</option>
+        <option value="entregador">🏍️ Entregador</option>
+        <option value="admin">🛡️ Administrador</option>
+      </select>
+      <div id="bloco-permissoes-edit" class="bloco-permissoes" style="max-height: 200px; overflow-y:auto;"></div>
+      <div class="botoes-pagamento">
+        <button class="btn-principal" onclick="salvarEdicaoUsuario()">💾 Salvar</button>
+        <button class="btn-limpar" onclick="fecharModal('modal-editar-usuario')">❌ Cancelar</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL DINHEIRO -->
-  <div id='modal-dinheiro' class='modal'>
-    <div class='modal-conteudo text-center'>
+  <!-- MODAL DINHEIRO (TROCO) -->
+  <div id="modal-dinheiro" class="modal">
+    <div class="modal-conteudo text-center">
       <h2>💵 Receber Dinheiro</h2>
-      <p class='texto-destaque'>Total: <strong>R$ <span id='modal-dinheiro-total'>0,00</span></strong></p>
-      <input type='number' step='0.01' id='valor-recebido' placeholder='Valor dado pelo cliente (R$)' oninput='calcularTrocoDinamico()'>
-      <div id='area-troco' class='area-troco'>Troco: <strong>R$ <span id='valor-troco'>0,00</span></strong></div>
-      <div class='botoes-pagamento'>
-        <button class='btn-principal' onclick='calcularTrocoEConfirmar()'>✅ Finalizar</button>
-        <button class='btn-limpar' onclick='fecharModal(`modal-dinheiro`)'>❌ Cancelar</button>
+      <p class="texto-destaque">Total: <strong>R$ <span id="modal-dinheiro-total">0,00</span></strong></p>
+      <input type="number" step="0.01" id="valor-recebido" placeholder="Valor dado pelo cliente (R$)" oninput="calcularTrocoDinamico()">
+      <div id="area-troco" class="area-troco">Troco: <strong>R$ <span id="valor-troco">0,00</span></strong></div>
+      <div class="botoes-pagamento">
+        <button class="btn-principal" onclick="calcularTrocoEConfirmar()">✅ Finalizar</button>
+        <button class="btn-limpar" onclick="fecharModal('modal-dinheiro')">❌ Cancelar</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL PIX -->
-  <div id='modal-pix' class='modal'>
-    <div class='modal-conteudo text-center'>
+  <div id="modal-pix" class="modal">
+    <div class="modal-conteudo text-center">
       <h2>📱 Pagamento via Pix</h2>
-      <p class='texto-destaque' style='color:#27ae60;'>Total: <strong>R$ <span id='modal-pix-total'>0,00</span></strong></p>
-      <div class='qr-wrap'><canvas id='canvas-qrcode'></canvas></div>
-      <label style='font-size: 12px; text-align: left;'>Pix Copia e Cola:</label>
-      <input type='text' id='pix-copia-cola' readonly>
-      <div class='botoes-pagamento'>
-        <button class='btn-principal' onclick='confirmarVendaFeita(`Pix`)'>✅ Pagamento Recebido</button>
-        <button class='btn-limpar' onclick='fecharModal(`modal-pix`)'>❌ Cancelar</button>
+      <p class="texto-destaque" style="color:#27ae60;">Total: <strong>R$ <span id="modal-pix-total">0,00</span></strong></p>
+      <div class="qr-wrap"><canvas id="canvas-qrcode"></canvas></div>
+      <label style="font-size: 12px; text-align: left;">Pix Copia e Cola:</label>
+      <input type="text" id="pix-copia-cola" readonly>
+      <div class="botoes-pagamento">
+        <button class="btn-principal" onclick="confirmarPixGlobal()">✅ Pagamento Recebido</button>
+        <button class="btn-limpar" onclick="fecharModal('modal-pix')">❌ Cancelar</button>
       </div>
     </div>
   </div>
 
-  <script src='app.js'></script>
+  <script src="app.js"></script>
 </body>
 </html>
