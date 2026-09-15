@@ -105,17 +105,30 @@
 
     <div class='conteudo conteudo-adm area-rolagem'>
       
-      <!-- ABA DASHBOARD (ATUALIZADA COM FILTROS) -->
+      <!-- ABA DASHBOARD (ATUALIZADA COM FILTROS DE DATA PERSONALIZADA) -->
       <div id='aba-dashboard' class='aba-conteudo ativa'>
         
         <!-- Filtros Inteligentes -->
         <div style='display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;'>
+          
           <select id='filtro-periodo' class='select-custom' style='margin: 0; width: auto; font-weight: bold; min-width: 180px;' onchange='renderizarDashboard()'>
             <option value='hoje'>📅 Vendas de Hoje</option>
             <option value='mes'>📅 Deste Mês</option>
             <option value='tudo'>📅 Todo o Período</option>
+            <option value='personalizado' style='display: none;'>📅 Personalizado</option>
           </select>
-          <button id='btn-limpar-filtro' class='btn-perigo' style='display: none; padding: 12px; margin: 0;' onclick='limparFiltrosDash()'>❌ Limpar Filtro</button>
+
+          <!-- NOVO: Filtro de Datas Personalizado -->
+          <div style='display: flex; gap: 8px; align-items: center; background: white; padding: 6px 12px; border-radius: 6px; border: 1px solid #dcdde1; flex-wrap: wrap;'>
+            <span style='font-size: 13px; font-weight: bold; color: #2c3e50;'>🔎 Buscar:</span>
+            <label style='margin: 0; font-size: 12px;'>De:</label>
+            <input type='date' id='filtro-data-inicio' style='margin: 0; padding: 4px; border: none; outline: none; font-size: 13px; background: #f8f9fa; border-radius: 4px;'>
+            <label style='margin: 0; font-size: 12px;'>Até:</label>
+            <input type='date' id='filtro-data-fim' style='margin: 0; padding: 4px; border: none; outline: none; font-size: 13px; background: #f8f9fa; border-radius: 4px;'>
+            <button class='btn-principal' style='padding: 6px 12px; width: auto; font-size: 12px; margin: 0;' onclick='aplicarFiltroPersonalizado()'>Filtrar</button>
+          </div>
+
+          <button id='btn-limpar-filtro' class='btn-perigo' style='display: none; padding: 12px; margin: 0;' onclick='limparFiltrosDash()'>❌ Limpar Filtro Cruzado</button>
         </div>
 
         <div class='cards-dash'>
@@ -129,7 +142,6 @@
         <div class='grid-dash'>
           <div class='grafico-container'><h3>💳 Formas de Pagamento</h3><div id='grafico-pagamentos' class='area-grafico'></div></div>
           <div class='grafico-container'><h3>👥 Vendas por Usuário</h3><div id='grafico-usuarios' class='area-grafico'></div></div>
-          <!-- PRODUTOS AGORA OCUPA A LARGURA TODA EMBAIXO -->
           <div class='grafico-container grafico-largo'><h3>📈 Produtos Mais Vendidos</h3><div id='grafico-produtos' class='area-grafico'></div></div>
         </div>
 

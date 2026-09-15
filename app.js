@@ -1,5 +1,5 @@
 // ==========================================
-// SISTEMA PDV — FIREBASE + PWA + DASHBOARD BI
+// SISTEMA PDV — FIREBASE + PWA + DASHBOARD BI + FILTROS CUSTOMIZADOS
 // ==========================================
 
 let estoque = [];
@@ -277,7 +277,7 @@ function fazerLogout() {
 }
 
 // ==========================================
-// TELA DO ENTREGADOR
+// TELA DO ENTREGADOR (PAGAMENTOS NA RUA)
 // ==========================================
 function mudarStatusEntregador() {
   const isLivre = document.getElementById('status-livre').checked;
@@ -422,7 +422,7 @@ function confirmarPixGlobal() {
 }
 
 // ==========================================
-// CAIXA E CARRINHO
+// CAIXA E CARRINHO (ESTOQUE REAL-TIME)
 // ==========================================
 function renderizarProdutos(lista) {
   const container = document.getElementById('lista-produtos');
@@ -703,8 +703,20 @@ function confirmarVendaFeita(formaPagamento) {
 }
 
 // ==========================================
-// PAINEL ADM - DASHBOARDS INTELIGENTES BI
+// PAINEL ADM - DASHBOARDS INTELIGENTES BI (FILTROS)
 // ==========================================
+
+function aplicarFiltroPersonalizado() {
+  const inicio = document.getElementById('filtro-data-inicio').value;
+  const fim = document.getElementById('filtro-data-fim').value;
+  
+  if (!inicio && !fim) return alert('⚠️ Preencha a data de "De" ou "Até" para filtrar.');
+  
+  const objSelect = document.getElementById('filtro-periodo');
+  if (objSelect) objSelect.value = 'personalizado';
+  
+  renderizarDashboard();
+}
 
 function limparFiltrosDash() {
   dashFiltroPagamento = null;
@@ -745,6 +757,26 @@ function renderizarDashboard() {
   const objSelect = document.getElementById('filtro-periodo');
   const periodo = objSelect ? objSelect.value : 'hoje';
   
+  // Limpa os inputs se não for personalizado
+  if (periodo !== 'personalizado') {
+    const dtIni = document.getElementById('filtro-data-inicio');
+    const dtFim = document.getElementById('filtro-data-fim');
+    if(dtIni) dtIni.value = '';
+    if(dtFim) dtFim.value = '';
+  }
+
+  const dataInicioStr = document.getElementById('filtro-data-inicio') ? document.getElementById('filtro-data-inicio').value : '';
+  const dataFimStr = document.getElementById('filtro-data-fim') ? document.getElementById('filtro-data-fim').value : '';
+
+  const parseDataBR = (str) => {
+    const p = str.split('/');
+    return parseInt(p[2] + p[1] + p[0]);
+  };
+  const parseDataInput = (str) => {
+    const p = str.split('-');
+    return parseInt(p[0] + p[1] + p[2]);
+  };
+
   const hojeStr = new Date().toLocaleDateString('pt-BR');
   const mesStr = hojeStr.substring(3); 
 
@@ -752,12 +784,19 @@ function renderizarDashboard() {
   let vendasPorData = vendas.filter(v => {
     if (!v.data) return false;
     const dataVenda = v.data.split(' ')[0].replace(',', '');
+    
     if (periodo === 'hoje') return dataVenda === hojeStr;
     if (periodo === 'mes') return dataVenda.endsWith(mesStr);
+    if (periodo === 'personalizado') {
+      const dataV = parseDataBR(dataVenda);
+      const dataI = dataInicioStr ? parseDataInput(dataInicioStr) : 0;
+      const dataF = dataFimStr ? parseDataInput(dataFimStr) : 99999999;
+      return dataV >= dataI && dataV <= dataF;
+    }
     return true; 
   });
 
-  // Calculando Pagamentos (Filtra Data + Usuário, se houver)
+  // Calculando Pagamentos (Filtra Data + Usuário)
   let basePagamentos = dashFiltroUsuario ? vendasPorData.filter(v => v.usuario === dashFiltroUsuario) : vendasPorData;
   let porPagamento = { 'Pix': 0, 'Cartão': 0, 'Dinheiro': 0, 'Delivery': 0 };
   basePagamentos.forEach(v => {
@@ -765,7 +804,7 @@ function renderizarDashboard() {
     porPagamento[forma] = (porPagamento[forma] || 0) + v.total;
   });
 
-  // Calculando Usuários (Filtra Data + Pagamento, se houver)
+  // Calculando Usuários (Filtra Data + Pagamento)
   let baseUsuarios = dashFiltroPagamento ? vendasPorData.filter(v => v.formaPagamento === dashFiltroPagamento) : vendasPorData;
   let porUsuario = {};
   baseUsuarios.forEach(v => {
@@ -835,8 +874,15 @@ function renderizarDashboard() {
   let entregasFiltradas = entregas.filter(e => {
     if (!e.data) return false;
     const dataE = e.data.split(' ')[0].replace(',', '');
+    
     if (periodo === 'hoje') return dataE === hojeStr;
     if (periodo === 'mes') return dataE.endsWith(mesStr);
+    if (periodo === 'personalizado') {
+      const dataV = parseDataBR(dataE);
+      const dataI = dataInicioStr ? parseDataInput(dataInicioStr) : 0;
+      const dataF = dataFimStr ? parseDataInput(dataFimStr) : 99999999;
+      return dataV >= dataI && dataV <= dataF;
+    }
     return true;
   });
 
