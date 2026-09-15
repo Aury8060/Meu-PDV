@@ -82,7 +82,7 @@ button:active { transform: scale(0.97); }
 /* Login */
 .login-container { max-width: 360px; margin: auto; background: white; padding: 35px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
 
-/* Produtos Caixa (GRID LIMPA) */
+/* Produtos Caixa */
 .grade-produtos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
 .produto-card { background: white; border-radius: 10px; text-align: center; box-shadow: 0 3px 6px rgba(0,0,0,0.06); cursor: pointer; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #eee; }
 .produto-card.esgotado { opacity: 0.5; filter: grayscale(100%); pointer-events: none; }
@@ -103,10 +103,17 @@ button:active { transform: scale(0.97); }
 .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid #3498db; }
 .card h3 { margin: 0 0 10px 0; color: #7f8c8d; font-size: 13px; text-transform: uppercase; }
 .card p { font-size: 28px; font-weight: 900; color: #2c3e50; margin:0; }
+
 .grid-dash { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.grafico-largo { grid-column: 1 / -1; } /* Faz o gráfico ocupar a linha inteira */
+
 .grafico-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
 .area-grafico { display: flex; align-items: flex-end; gap: 15px; height: 200px; padding-top: 20px; border-bottom: 2px solid #ecf0f1; overflow-x: auto; }
-.barra-container { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; width: 60px; }
+
+/* Barra Container - Ajustado flex-shrink para o gráfico não espremer */
+.barra-container { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; width: 60px; transition: 0.3s; flex-shrink: 0; }
+.barra-container.clickable { cursor: pointer; }
+.barra-container.clickable:hover { transform: translateY(-5px); }
 .barra { width: 40px; background: #3498db; border-radius: 4px 4px 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 5px; color: white; font-size: 10px; font-weight: bold; }
 .barra-container span { font-size: 11px; font-weight: bold; margin-top: 8px; color: #555; text-align: center; white-space: nowrap; overflow: hidden; width: 60px; }
 
@@ -155,23 +162,18 @@ button:active { transform: scale(0.97); }
   .grade-produtos { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .grid-dash { grid-template-columns: 1fr 1fr; }
 }
-
 @media (max-width: 799px) {
   .conteudo { flex-direction: column; padding: 10px; gap: 10px; }
   header { padding: 10px 15px; }
   header h1 { font-size: 16px; }
-  
   .coluna { flex: 1; }
   .carrinho { flex: 1.1; }
-  
   .grade-produtos { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
   .prod-img-box { height: 80px; }
-  
   .botoes-pagamento { gap: 8px; margin-top: 8px; }
   .botoes-pagamento button { padding: 10px; font-size: 14px; }
   .total { font-size: 20px; padding-bottom: 5px; }
   h2 { font-size: 16px; margin: 5px 0; }
   input[type='text'], input[type='number'], .select-custom { padding: 10px; margin-bottom: 8px; }
-  
   .rodape-carrinho { padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
 }
