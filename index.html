@@ -105,7 +105,7 @@
 
     <div class='conteudo conteudo-adm area-rolagem'>
       
-      <!-- ABA DASHBOARD (ATUALIZADA COM FILTROS DE DATA PERSONALIZADA) -->
+      <!-- ABA DASHBOARD -->
       <div id='aba-dashboard' class='aba-conteudo ativa'>
         
         <!-- Filtros Inteligentes -->
@@ -118,7 +118,7 @@
             <option value='personalizado' style='display: none;'>📅 Personalizado</option>
           </select>
 
-          <!-- NOVO: Filtro de Datas Personalizado -->
+          <!-- Filtro de Datas Personalizado -->
           <div style='display: flex; gap: 8px; align-items: center; background: white; padding: 6px 12px; border-radius: 6px; border: 1px solid #dcdde1; flex-wrap: wrap;'>
             <span style='font-size: 13px; font-weight: bold; color: #2c3e50;'>🔎 Buscar:</span>
             <label style='margin: 0; font-size: 12px;'>De:</label>
@@ -237,12 +237,19 @@
       <input type='text' id='delivery-endereco' placeholder='Rua, Número, Bairro, Referência'>
       
       <label>Status do Pagamento</label>
-      <select id='delivery-pagamento' class='select-custom'>
-        <option value='pagar_entrega'>⚠️ Cobrar na Entrega (Entregador recebe)</option>
+      <select id='delivery-pagamento' class='select-custom' onchange='mudarPagamentoDelivery()'>
         <option value='Pix'>✅ Já Pago na Loja - Pix</option>
+        <option value='pagar_entrega'>⚠️ Cobrar na Entrega (Entregador recebe)</option>
         <option value='Cartão'>✅ Já Pago na Loja - Cartão</option>
         <option value='Dinheiro'>✅ Já Pago na Loja - Dinheiro</option>
       </select>
+
+      <!-- QUADRO PIX EMBUTIDO NO DELIVERY PARA COPIAR RÁPIDO -->
+      <div id='area-pix-delivery' style='display: none; margin-bottom: 12px; background: #f9f9f9; padding: 12px; border-radius: 6px; border: 1px dashed #ccc;'>
+        <label style='font-size: 13px; color: #27ae60; margin-bottom: 8px;'>Pix Copia e Cola (R$ <span id='valor-pix-delivery'>0,00</span>):</label>
+        <input type='text' id='pix-copia-cola-delivery' readonly style='font-size: 11px; margin-bottom: 8px; padding: 8px; background: #fff;'>
+        <button class='btn-sec' style='width: 100%; background: #ecf0f1; color: #333; border: 1px solid #ccc;' onclick='copiarPix(`pix-copia-cola-delivery`)'>📋 Copiar Código Pix</button>
+      </div>
 
       <label>Selecionar Entregador Livre</label>
       <select id='delivery-entregador' class='select-custom'></select>
@@ -332,14 +339,18 @@
     </div>
   </div>
 
-  <!-- MODAL PIX -->
+  <!-- MODAL PIX PADRÃO CAIXA -->
   <div id='modal-pix' class='modal'>
     <div class='modal-conteudo text-center'>
       <h2>📱 Pagamento via Pix</h2>
       <p class='texto-destaque' style='color:#27ae60;'>Total: <strong>R$ <span id='modal-pix-total'>0,00</span></strong></p>
       <div class='qr-wrap'><canvas id='canvas-qrcode'></canvas></div>
       <label style='font-size: 12px; text-align: left;'>Pix Copia e Cola:</label>
-      <input type='text' id='pix-copia-cola' readonly>
+      <input type='text' id='pix-copia-cola' readonly style='font-size: 11px; margin-bottom: 8px; padding: 8px;'>
+      
+      <!-- NOVO BOTÃO COPIAR -->
+      <button class='btn-sec' style='width: 100%; margin-bottom: 15px; background: #ecf0f1; color: #333; border: 1px solid #ccc;' onclick='copiarPix(`pix-copia-cola`)'>📋 Copiar Código Pix</button>
+      
       <div class='botoes-pagamento'>
         <button class='btn-principal' onclick='confirmarPixGlobal()'>✅ Pagamento Recebido</button>
         <button class='btn-limpar' onclick='fecharModal(`modal-pix`)'>❌ Cancelar</button>

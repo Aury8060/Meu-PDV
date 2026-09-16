@@ -421,6 +421,19 @@ function confirmarPixGlobal() {
   }
 }
 
+function copiarPix(idInput) {
+  const input = document.getElementById(idInput);
+  if(!input.value || input.value.includes('⚠️')) return alert('❌ Código inválido para copiar.');
+  
+  input.select();
+  input.setSelectionRange(0, 99999); 
+  navigator.clipboard.writeText(input.value).then(() => {
+    alert('✅ Código Pix copiado com sucesso!');
+  }).catch(err => {
+    alert('❌ Erro ao copiar o código: ' + err);
+  });
+}
+
 // ==========================================
 // CAIXA E CARRINHO (ESTOQUE REAL-TIME)
 // ==========================================
@@ -535,7 +548,7 @@ function limparCarrinho() {
 }
 
 // ==========================================
-// FLUXO ATENDENTE DELIVERY
+// FLUXO ATENDENTE DELIVERY (COM PIX EMBUTIDO)
 // ==========================================
 function abrirModalDelivery() {
   if (carrinho.length === 0) return alert('🛒 O Carrinho está vazio!');
@@ -549,8 +562,33 @@ function abrirModalDelivery() {
   });
   
   document.getElementById('delivery-endereco').value = '';
-  document.getElementById('delivery-pagamento').value = 'pagar_entrega';
+  
+  // Define padrão como Pix e aciona a UI do Pix
+  document.getElementById('delivery-pagamento').value = 'Pix';
+  mudarPagamentoDelivery();
+  
   abrirModal('modal-delivery');
+}
+
+function mudarPagamentoDelivery() {
+  const forma = document.getElementById('delivery-pagamento').value;
+  const areaPix = document.getElementById('area-pix-delivery');
+  
+  if (forma === 'Pix') {
+    const total = carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+    document.getElementById('valor-pix-delivery').textContent = total.toFixed(2);
+    
+    if (!config.chavePix) {
+      document.getElementById('pix-copia-cola-delivery').value = '⚠️ Chave Pix não configurada no Painel ADM';
+    } else {
+      const payload = gerarPayloadPix(config.chavePix, total, 'Loja PDV', 'Cidade');
+      document.getElementById('pix-copia-cola-delivery').value = payload;
+    }
+    
+    areaPix.style.display = 'block';
+  } else {
+    areaPix.style.display = 'none';
+  }
 }
 
 function confirmarDelivery() {
@@ -757,7 +795,6 @@ function renderizarDashboard() {
   const objSelect = document.getElementById('filtro-periodo');
   const periodo = objSelect ? objSelect.value : 'hoje';
   
-  // Limpa os inputs se não for personalizado
   if (periodo !== 'personalizado') {
     const dtIni = document.getElementById('filtro-data-inicio');
     const dtFim = document.getElementById('filtro-data-fim');
@@ -780,7 +817,6 @@ function renderizarDashboard() {
   const hojeStr = new Date().toLocaleDateString('pt-BR');
   const mesStr = hojeStr.substring(3); 
 
-  // 1º FILTRO GLOBAL (DATA)
   let vendasPorData = vendas.filter(v => {
     if (!v.data) return false;
     const dataVenda = v.data.split(' ')[0].replace(',', '');
@@ -796,7 +832,6 @@ function renderizarDashboard() {
     return true; 
   });
 
-  // Calculando Pagamentos (Filtra Data + Usuário)
   let basePagamentos = dashFiltroUsuario ? vendasPorData.filter(v => v.usuario === dashFiltroUsuario) : vendasPorData;
   let porPagamento = { 'Pix': 0, 'Cartão': 0, 'Dinheiro': 0, 'Delivery': 0 };
   basePagamentos.forEach(v => {
@@ -804,7 +839,6 @@ function renderizarDashboard() {
     porPagamento[forma] = (porPagamento[forma] || 0) + v.total;
   });
 
-  // Calculando Usuários (Filtra Data + Pagamento)
   let baseUsuarios = dashFiltroPagamento ? vendasPorData.filter(v => v.formaPagamento === dashFiltroPagamento) : vendasPorData;
   let porUsuario = {};
   baseUsuarios.forEach(v => {
@@ -812,7 +846,6 @@ function renderizarDashboard() {
     porUsuario[user] = (porUsuario[user] || 0) + v.total;
   });
 
-  // Calculando Produtos & Totais (Filtra Data + Pagamento + Usuário)
   let baseGeral = vendasPorData;
   if (dashFiltroPagamento) baseGeral = baseGeral.filter(v => v.formaPagamento === dashFiltroPagamento);
   if (dashFiltroUsuario) baseGeral = baseGeral.filter(v => v.usuario === dashFiltroUsuario);
@@ -870,7 +903,6 @@ function renderizarDashboard() {
   renderGrafico('grafico-usuarios', porUsuario, '#3498db', 'R$', '', 'usuario');
   renderGrafico('grafico-produtos', porProduto, '#2ecc71', '', ' un');
 
-  // Relatório de Delivery Específico
   let entregasFiltradas = entregas.filter(e => {
     if (!e.data) return false;
     const dataE = e.data.split(' ')[0].replace(',', '');
