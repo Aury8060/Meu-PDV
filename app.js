@@ -548,7 +548,7 @@ function limparCarrinho() {
 }
 
 // ==========================================
-// FLUXO ATENDENTE DELIVERY (COM PIX EMBUTIDO)
+// FLUXO ATENDENTE DELIVERY (COM PIX E TELA NOVA)
 // ==========================================
 function abrirModalDelivery() {
   if (carrinho.length === 0) return alert('🛒 O Carrinho está vazio!');
@@ -563,7 +563,6 @@ function abrirModalDelivery() {
   
   document.getElementById('delivery-endereco').value = '';
   
-  // Define padrão como Pix e aciona a UI do Pix
   document.getElementById('delivery-pagamento').value = 'Pix';
   mudarPagamentoDelivery();
   
@@ -599,9 +598,11 @@ function confirmarDelivery() {
   if (!endereco || !idEntregador) return alert('❌ Preencha endereço e selecione o entregador.');
 
   const total = carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+  const idPedidoNovo = Date.now();
+  const numeroPedidoFormatado = idPedidoNovo.toString().slice(-4);
 
   entregas.push({
-    id: Date.now(),
+    id: idPedidoNovo,
     data: new Date().toLocaleString('pt-BR'),
     itens: [...carrinho],
     total: total,
@@ -610,14 +611,14 @@ function confirmarDelivery() {
     atendente: usuarioLogado.user,
     status: 'pendente',
     pagamento: pagamento,
-    tempoCriacao: Date.now(),
+    tempoCriacao: idPedidoNovo,
     tempoEntrega: null
   });
   salvarNoFirebaseSilencioso('entregas', entregas);
 
   if (pagamento !== 'pagar_entrega') {
     vendas.push({
-      id: Date.now(),
+      id: idPedidoNovo,
       data: new Date().toLocaleString('pt-BR'),
       itens: [...carrinho],
       total: total,
@@ -632,7 +633,10 @@ function confirmarDelivery() {
   carrinho = [];
   salvarCarrinhoPendente();
   renderizarCarrinho();
-  alert('🛵 Pedido enviado com sucesso para o Entregador!');
+  
+  // TELA BONITA COM O NÚMERO DO PEDIDO
+  document.getElementById('numero-pedido-gerado').textContent = numeroPedidoFormatado;
+  abrirModal('modal-sucesso-delivery');
 }
 
 // ==========================================
