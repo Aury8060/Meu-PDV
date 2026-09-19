@@ -66,6 +66,8 @@ async function iniciarSistemaFirebase() {
     iniciarEscutaGlobalTempoReal();
   } catch (error) {
     if (!appInicializado) {
+      carregarDadosLocais();
+      inicializarAdminPadrao();
       appInicializado = true;
       restaurarEstadoDoNavegador();
     }
@@ -116,6 +118,8 @@ function iniciarEscutaGlobalTempoReal() {
 
   setTimeout(() => {
     if (!appInicializado) {
+      carregarDadosLocais();
+      inicializarAdminPadrao();
       appInicializado = true;
       restaurarEstadoDoNavegador();
     }
@@ -134,6 +138,14 @@ function atualizarTelasEmTempoReal() {
   
   if (document.getElementById('modal-gestao-entregas').classList.contains('ativa')) renderizarGestaoEntregas();
   if (document.getElementById('modal-historico-vendas').classList.contains('ativa')) renderizarHistoricoVendas();
+}
+
+function carregarDadosLocais() {
+  estoque = JSON.parse(localStorage.getItem('estoque')) || [];
+  vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+  usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
+  entregas = JSON.parse(localStorage.getItem('entregas')) || [];
+  config = JSON.parse(localStorage.getItem('config')) || { chavePix: '', contadorNF: 0 };
 }
 
 function salvarDadosLocaisSilencioso() {
@@ -164,6 +176,9 @@ function gerarProximaNF() {
   return String(next).padStart(4, '0');
 }
 
+// ==========================================
+// RESTAURAÇÃO DE TELA E NAVEGAÇÃO
+// ==========================================
 function restaurarEstadoDoNavegador() {
   const salvoUser = localStorage.getItem('usuarioLogado');
   if (salvoUser) {
@@ -171,9 +186,10 @@ function restaurarEstadoDoNavegador() {
     usuarioLogado = usuarios.find(u => u.id === userLocal.id) || userLocal;
     carrinho = JSON.parse(localStorage.getItem('carrinhoPendente')) || [];
     
-    const telaSalva = localStorage.getItem('telaAtual') || 'venda';
-    const abaSalva = localStorage.getItem('abaAtual') || 'dashboard';
+    let telaSalva = localStorage.getItem('telaAtual') || 'venda';
+    if (telaSalva === 'login') telaSalva = 'venda'; // Correção vital para não prender no ecrã de login
     
+    const abaSalva = localStorage.getItem('abaAtual') || 'dashboard';
     const isMasterAdmin = (usuarioLogado.user === 'au.costa' || usuarioLogado.perfil === 'admin' || usuarioLogado.isAdmin);
     
     if (usuarioLogado.perfil === 'entregador') {
@@ -219,6 +235,9 @@ function mudarAbaAdm(aba) {
 function abrirModal(id) { document.getElementById(id).classList.add('ativa'); }
 function fecharModal(id) { document.getElementById(id).classList.remove('ativa'); }
 
+// ==========================================
+// CÂMERA QR CODE E LOGIN
+// ==========================================
 function abrirCameraLogin() {
   if (typeof Html5Qrcode === 'undefined') return alert('⚠️ Sem internet para carregar a Câmera.');
   abrirModal('modal-camera');
@@ -239,9 +258,9 @@ function processarLoginCachra(qrText) {
 }
 
 function fazerLogin() {
-  const user = document.getElementById('login-user').value.trim();
+  const user = document.getElementById('login-user').value.trim().toLowerCase();
   const pass = document.getElementById('login-senha').value.trim();
-  const usuario = usuarios.find(u => u.user === user && u.senha === pass);
+  const usuario = usuarios.find(u => u.user.toLowerCase() === user && u.senha === pass);
   if (usuario) iniciarSessao(usuario); else alert('❌ Dados incorretos!');
 }
 
@@ -250,6 +269,8 @@ function iniciarSessao(usuario) {
   localStorage.setItem('usuarioLogado', JSON.stringify(usuarioLogado));
   document.getElementById('login-user').value = '';
   document.getElementById('login-senha').value = '';
+  
+  localStorage.setItem('telaAtual', usuario.perfil === 'entregador' ? 'entregador' : 'venda');
   restaurarEstadoDoNavegador();
 }
 
@@ -274,7 +295,18 @@ function confirmarAberturaCaixa() {
   if (isNaN(valor) || valor <= 0) return alert('❌ Insira um valor válido.');
 
   const numNF = gerarProximaNF();
-  vendas.push({ id: Date.now(), nf: numNF, data: new Date().toLocaleString('pt-BR'), itens: [], total: valor, formaPagamento: 'Dinheiro', usuario: usuarioLogado.user, tipo: 'Abertura de Caixa' });
+
+  vendas.push({
+    id: Date.now(),
+    nf: numNF,
+    data: new Date().toLocaleString('pt-BR'),
+    itens: [],
+    total: valor,
+    formaPagamento: 'Dinheiro',
+    usuario: usuarioLogado.user,
+    tipo: 'Abertura de Caixa'
+  });
+  
   salvarNoFirebaseSilencioso('vendas', vendas);
   fecharModal('modal-abertura-caixa');
   
@@ -295,7 +327,9 @@ function renderizarHistoricoVendas() {
   const container = document.getElementById('lista-historico-vendas');
   container.innerHTML = '';
   
-  const lista = [...vendas].reverse().filter(v => (v.nf && v.nf.includes(termo)) || (v.total && v.total.toString().includes(termo)));
+  const lista = [...vendas].reverse().filter(v => {
+    return (v.nf && v.nf.includes(termo)) || (v.total && v.total.toString().includes(termo));
+  });
 
   if (lista.length === 0) {
     container.innerHTML = `<p style='text-align:center; color:#777; padding:20px;'>Nenhuma movimentação encontrada.</p>`;
@@ -304,11 +338,13 @@ function renderizarHistoricoVendas() {
 
   lista.forEach(v => {
     let lblTipo = v.tipo === 'Abertura de Caixa' ? '💵 Fundo de Caixa' : (v.tipo === 'Delivery' ? '🛵 Delivery' : '🛒 Venda Balcão');
+    
     container.innerHTML += `
       <div class='linha-lista' style='margin-bottom: 8px;'>
         <div>
           <strong style='font-size:14px; color:#2c3e50;'>NF: #${v.nf}</strong>
-          <span style='font-size:12px; color:#7f8c8d; margin-left:10px;'>${v.data}</span><br>
+          <span style='font-size:12px; color:#7f8c8d; margin-left:10px;'>${v.data}</span>
+          <br>
           <span style='font-size:13px; font-weight:bold; color:#27ae60;'>R$ ${formatarMoeda(v.total)}</span>
           <span style='font-size:11px; color:#555; margin-left:10px;'>${lblTipo} (${v.formaPagamento})</span>
         </div>
@@ -329,7 +365,6 @@ function executarEstorno(acao) {
   if (idx === -1) return;
   const venda = vendas[idx];
 
-  // Devolve o estoque
   if (venda.itens && venda.itens.length > 0) {
     venda.itens.forEach(item => {
       const prod = estoque.find(p => p.id === item.id);
@@ -365,13 +400,21 @@ function executarEstorno(acao) {
 // ==========================================
 // GESTÃO DE ENTREGAS (ATENDENTE)
 // ==========================================
-function abrirModalGestaoEntregas() { renderizarGestaoEntregas(); abrirModal('modal-gestao-entregas'); }
+function abrirModalGestaoEntregas() {
+  renderizarGestaoEntregas();
+  abrirModal('modal-gestao-entregas');
+}
 
 function renderizarGestaoEntregas() {
-  const container = document.getElementById('lista-gestao-entregas'); container.innerHTML = '';
+  const container = document.getElementById('lista-gestao-entregas');
+  container.innerHTML = '';
+  
   const pendentes = entregas.filter(e => e.status !== 'entregue').reverse();
 
-  if (pendentes.length === 0) { container.innerHTML = `<p style='text-align:center; color:#777; padding:20px;'>Nenhum pedido na rua!</p>`; return; }
+  if (pendentes.length === 0) {
+    container.innerHTML = `<p style='text-align:center; color:#777; padding:20px;'>Nenhum pedido na rua!</p>`;
+    return;
+  }
 
   const selectEntregadores = usuarios.filter(u => u.perfil === 'entregador').map(u => `<option value='${u.id}'>🏍️ ${u.user}</option>`).join('');
 
@@ -379,10 +422,11 @@ function renderizarGestaoEntregas() {
     container.innerHTML += `
       <div class='linha-lista' style='flex-direction:column; align-items:flex-start; margin-bottom:10px; border-left-color:#8e44ad;'>
         <div style='width:100%; display:flex; justify-content:space-between; margin-bottom:5px;'>
-          <strong>Pedido #${e.id.toString().slice(-4)} / NF #${e.nf}</strong>
+          <strong>NF/Pedido: #${e.nf || e.id.toString().slice(-4)}</strong>
           <span style='color:#e74c3c; font-weight:bold;'>R$ ${formatarMoeda(e.total)}</span>
         </div>
         <p style='font-size:13px; margin-bottom:8px;'><strong>Endereço:</strong> ${e.endereco}</p>
+        
         <div style='display:flex; gap:8px; width:100%; flex-wrap: wrap;'>
           <select id='troca-entregador-${e.id}' class='select-custom' style='flex:1; margin:0; padding:6px; min-width: 150px;'>             <option value='${e.idEntregador}' selected>Atual: ${usuarios.find(u=>u.id === e.idEntregador)?.user}</option>${selectEntregadores}
           </select>
@@ -400,22 +444,33 @@ function salvarTrocaEntregador(idEntrega) {
   if(e) {
     e.idEntregador = parseInt(novoId);
     salvarNoFirebaseSilencioso('entregas', entregas);
-    alert('✅ Entregador alterado!'); renderizarGestaoEntregas();
+    alert('✅ Entregador alterado!');
+    renderizarGestaoEntregas();
   }
 }
 
 function cancelarEntregaPendente(idEntrega) {
   if (!confirm('⚠️ Tem certeza que deseja cancelar este pedido? O estoque será devolvido.')) return;
+  
   const idxE = entregas.findIndex(x => x.id === idEntrega);
   if (idxE !== -1) {
-    entregas[idxE].itens.forEach(item => { const prod = estoque.find(p => p.id === item.id); if (prod) prod.quantidade += parseInt(item.quantidade, 10); });
+    entregas[idxE].itens.forEach(item => {
+      const prod = estoque.find(p => p.id === item.id);
+      if (prod) prod.quantidade += parseInt(item.quantidade, 10);
+    });
     salvarNoFirebaseSilencioso('estoque', estoque);
+    
     entregas.splice(idxE, 1);
     salvarNoFirebaseSilencioso('entregas', entregas);
     
     const idxV = vendas.findIndex(v => v.id === idEntrega);
-    if (idxV !== -1) { vendas.splice(idxV, 1); salvarNoFirebaseSilencioso('vendas', vendas); }
-    alert('✅ Pedido cancelado e itens devolvidos ao estoque!'); renderizarGestaoEntregas();
+    if (idxV !== -1) {
+      vendas.splice(idxV, 1);
+      salvarNoFirebaseSilencioso('vendas', vendas);
+    }
+
+    alert('✅ Pedido cancelado e itens devolvidos ao estoque!');
+    renderizarGestaoEntregas();
   }
 }
 
@@ -426,7 +481,8 @@ function mudarStatusEntregador() {
   const isLivre = document.getElementById('status-livre').checked;
   const idx = usuarios.findIndex(u => u.id === usuarioLogado.id);
   if (idx !== -1) {
-    usuarios[idx].isLivre = isLivre; usuarioLogado.isLivre = isLivre;
+    usuarios[idx].isLivre = isLivre;
+    usuarioLogado.isLivre = isLivre;
     localStorage.setItem('usuarioLogado', JSON.stringify(usuarioLogado));
     salvarNoFirebaseSilencioso('usuarios', usuarios);
   }
@@ -437,14 +493,20 @@ function renderizarTelaEntregador() {
   document.getElementById('nome-entregador').textContent = usuarioLogado.user;
   document.getElementById('status-livre').checked = usuarioLogado.isLivre || false;
 
-  const container = document.getElementById('lista-entregas-pendentes'); container.innerHTML = '';
+  const container = document.getElementById('lista-entregas-pendentes');
+  container.innerHTML = '';
+
   const minhasEntregas = entregas.filter(e => e.idEntregador === usuarioLogado.id && e.status !== 'entregue');
 
-  if (minhasEntregas.length === 0) { container.innerHTML = `<p style='text-align:center; color:#777; margin-top:20px;'>🎉 Nenhuma entrega pendente!</p>`; return; }
+  if (minhasEntregas.length === 0) {
+    container.innerHTML = `<p style='text-align:center; color:#777; margin-top:20px;'>🎉 Nenhuma entrega pendente!</p>`;
+    return;
+  }
 
   minhasEntregas.forEach(e => {
     const urlMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.endereco)}`;
     let statusPag = ''; let btnAcao = '';
+
     if (e.pagamento === 'pagar_entrega') {
       statusPag = `<span style='color:#e74c3c; font-weight:bold;'>⚠️ Cobrar R$ ${formatarMoeda(e.total)} na Entrega</span>`;
       btnAcao = `<button class='btn-principal' style='margin-top:10px; background:#f39c12;' onclick='abrirCobrancaEntregador(${e.id})'>💰 Receber e Entregar</button>`;
@@ -455,7 +517,10 @@ function renderizarTelaEntregador() {
 
     container.innerHTML += `
       <div class='user-card' style='margin-bottom:15px; border-top-color:#8e44ad;'>
-        <div class='user-card-header'><strong>Pedido #${e.id.toString().slice(-4)} / NF #${e.nf}</strong><span style='color:#e74c3c; font-weight:bold;'>Pendente</span></div>
+        <div class='user-card-header'>
+          <strong>NF #${e.nf}</strong>
+          <span style='color:#e74c3c; font-weight:bold;'>Pendente</span>
+        </div>
         <p style='margin-bottom:5px; font-size:14px;'><strong>📍 Endereço:</strong> ${e.endereco}</p>
         <p style='margin-bottom:10px; font-size:14px;'>${statusPag}</p>
         <button class='btn-maps' onclick='window.open("${urlMaps}", "_blank")'>🗺️ Abrir no Google Maps</button>
@@ -469,14 +534,17 @@ function concluirEntregaJaPaga(id) {
   if (confirm('✅ Confirmar que o pedido foi entregue ao cliente?')) {
     const idx = entregas.findIndex(e => e.id === id);
     if (idx !== -1) {
-      entregas[idx].status = 'entregue'; entregas[idx].tempoEntrega = Date.now();
-      salvarNoFirebaseSilencioso('entregas', entregas); alert('🎉 Entrega concluída com sucesso!');
+      entregas[idx].status = 'entregue';
+      entregas[idx].tempoEntrega = Date.now();
+      salvarNoFirebaseSilencioso('entregas', entregas);
+      alert('🎉 Entrega concluída com sucesso!');
     }
   }
 }
 
 function abrirCobrancaEntregador(id) {
-  const e = entregas.find(x => x.id === id); if (!e) return;
+  const e = entregas.find(x => x.id === id);
+  if (!e) return;
   document.getElementById('entregador-id-entrega').value = e.id;
   document.getElementById('entregador-total-cobrar').textContent = formatarMoeda(e.total);
   abrirModal('modal-entregador-pagamento');
@@ -484,11 +552,15 @@ function abrirCobrancaEntregador(id) {
 
 function entregadorCobrar(forma) {
   const id = parseInt(document.getElementById('entregador-id-entrega').value);
-  const e = entregas.find(x => x.id === id); if (!e) return;
+  const e = entregas.find(x => x.id === id);
+  if (!e) return;
 
   if (forma === 'Pix') {
     if (!config.chavePix) return alert('⚠️ A loja não configurou a Chave Pix.');
-    fecharModal('modal-entregador-pagamento'); modoPixAtual = 'entregador'; idEntregaPix = id;
+    fecharModal('modal-entregador-pagamento');
+    modoPixAtual = 'entregador';
+    idEntregaPix = id;
+    
     document.getElementById('modal-pix-total').textContent = formatarMoeda(e.total);
     const payload = gerarPayloadPix(config.chavePix, parseFloat(e.total), 'Loja PDV', 'Cidade');
     document.getElementById('pix-copia-cola').value = payload;
@@ -500,24 +572,45 @@ function entregadorCobrar(forma) {
     processarCartao(parseFloat(e.total), id);
   } 
   else if (forma === 'Dinheiro') {
-    if (confirm(`💵 Confirma o recebimento de R$ ${formatarMoeda(e.total)} em dinheiro?`)) { finalizarCobrancaEntregador(id, 'Dinheiro'); fecharModal('modal-entregador-pagamento'); }
+    if (confirm(`💵 Confirma o recebimento de R$ ${formatarMoeda(e.total)} em dinheiro?`)) {
+      finalizarCobrancaEntregador(id, 'Dinheiro');
+      fecharModal('modal-entregador-pagamento');
+    }
   }
 }
 
 function finalizarCobrancaEntregador(id, forma) {
-  const idx = entregas.findIndex(x => x.id === id); if (idx === -1) return;
-  entregas[idx].status = 'entregue'; entregas[idx].tempoEntrega = Date.now(); entregas[idx].pagamentoFormaReal = forma;
+  const idx = entregas.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  
+  entregas[idx].status = 'entregue';
+  entregas[idx].tempoEntrega = Date.now();
+  entregas[idx].pagamentoFormaReal = forma;
   salvarNoFirebaseSilencioso('entregas', entregas);
 
-  vendas.push({ id: entregas[idx].id, nf: entregas[idx].nf, data: new Date().toLocaleString('pt-BR'), itens: [...entregas[idx].itens], total: parseFloat(entregas[idx].total), formaPagamento: forma, usuario: entregas[idx].atendente, tipo: 'Delivery' });
+  vendas.push({
+    id: entregas[idx].id,
+    nf: entregas[idx].nf,
+    data: new Date().toLocaleString('pt-BR'),
+    itens: [...entregas[idx].itens],
+    total: parseFloat(entregas[idx].total),
+    formaPagamento: forma,
+    usuario: entregas[idx].atendente, 
+    tipo: 'Delivery'
+  });
   salvarNoFirebaseSilencioso('vendas', vendas);
 
-  alert('🎉 Pagamento recebido e entrega concluída!'); renderizarTelaEntregador();
+  alert('🎉 Pagamento recebido e entrega concluída!');
+  renderizarTelaEntregador();
 }
 
 function confirmarPixGlobal() {
-  if (modoPixAtual === 'caixa') confirmarVendaFeita('Pix');
-  else { finalizarCobrancaEntregador(idEntregaPix, 'Pix'); fecharModal('modal-pix'); }
+  if (modoPixAtual === 'caixa') {
+    confirmarVendaFeita('Pix');
+  } else {
+    finalizarCobrancaEntregador(idEntregaPix, 'Pix');
+    fecharModal('modal-pix');
+  }
 }
 
 function copiarPix(idInput) {
@@ -528,58 +621,103 @@ function copiarPix(idInput) {
 }
 
 // ==========================================
-// CAIXA E CARRINHO
+// CAIXA E CARRINHO (ESTOQUE REAL-TIME)
 // ==========================================
 function renderizarProdutos(lista) {
-  const container = document.getElementById('lista-produtos'); container.innerHTML = '';
+  const container = document.getElementById('lista-produtos');
+  container.innerHTML = '';
+  
   let produtosParaExibir = estoque;
+
   const isMasterAdmin = (usuarioLogado && (usuarioLogado.user === 'au.costa' || usuarioLogado.perfil === 'admin' || usuarioLogado.isAdmin));
 
   if (usuarioLogado && !isMasterAdmin && usuarioLogado.permissoes !== 'ALL') {
     produtosParaExibir = estoque.filter(p => usuarioLogado.permissoes.includes(p.id.toString()));
   }
+
   if (lista) produtosParaExibir = lista;
 
   produtosParaExibir.forEach(prod => {
-    const card = document.createElement('div'); card.className = 'produto-card ' + (prod.quantidade <= 0 ? 'esgotado' : '');
+    const card = document.createElement('div');
+    card.className = 'produto-card ' + (prod.quantidade <= 0 ? 'esgotado' : '');
+    
     const imgData = prod.imagem ? prod.imagem : 'data:image/svg+xml;utf8,<svg xmlns=`http://www.w3.org/2000/svg` viewBox=`0 0 100 100`><rect fill=`%23eee` width=`100` height=`100`/><text fill=`%23999` x=`50` y=`50` font-family=`sans-serif` font-size=`14` text-anchor=`middle` alignment-baseline=`middle`>Sem Foto</text></svg>'.replace(/`/g, "'");
-    card.innerHTML = `<div class='prod-img-box'><img src='${imgData}' alt='Img'></div><div class='prod-info'><div class='prod-nome'>${prod.nome}</div><div class='prod-preco'>R$ ${formatarMoeda(prod.preco)}</div><div class='prod-qtd'>Estoque: ${prod.quantidade}</div></div>`;
+    
+    card.innerHTML = `
+      <div class='prod-img-box'><img src='${imgData}' alt='Img'></div>
+      <div class='prod-info'>
+        <div class='prod-nome'>${prod.nome}</div>
+        <div class='prod-preco'>R$ ${formatarMoeda(prod.preco)}</div>
+        <div class='prod-qtd'>Estoque: ${prod.quantidade}</div>
+      </div>
+    `;
+    
     if (prod.quantidade > 0) card.onclick = () => adicionarAoCarrinho(prod.id);
     container.appendChild(card);
   });
 }
 
 function filtrarProdutos() {
-  const termo = document.getElementById('busca').value.toLowerCase(); let produtosDisponiveis = estoque;
+  const termo = document.getElementById('busca').value.toLowerCase();
+  let produtosDisponiveis = estoque;
   const isMasterAdmin = (usuarioLogado.user === 'au.costa' || usuarioLogado.perfil === 'admin' || usuarioLogado.isAdmin);
-  if (!isMasterAdmin && usuarioLogado.permissoes !== 'ALL') produtosDisponiveis = estoque.filter(p => usuarioLogado.permissoes.includes(p.id.toString()));
-  renderizarProdutos(produtosDisponiveis.filter(p => p.nome.toLowerCase().includes(termo)));
+  
+  if (!isMasterAdmin && usuarioLogado.permissoes !== 'ALL') {
+    produtosDisponiveis = estoque.filter(p => usuarioLogado.permissoes.includes(p.id.toString()));
+  }
+  const filtrado = produtosDisponiveis.filter(p => p.nome.toLowerCase().includes(termo));
+  renderizarProdutos(filtrado);
 }
 
 function adicionarAoCarrinho(idProd) {
-  const produto = estoque.find(p => p.id === idProd); if (!produto || produto.quantidade <= 0) return;
-  produto.quantidade--; salvarNoFirebaseSilencioso('estoque', estoque);
+  const produto = estoque.find(p => p.id === idProd);
+  if (!produto || produto.quantidade <= 0) return;
+  
+  produto.quantidade--;
+  salvarNoFirebaseSilencioso('estoque', estoque);
+
   const itemNoCarrinho = carrinho.find(i => i.id === idProd);
-  if (itemNoCarrinho) itemNoCarrinho.quantidade++; else carrinho.push({ ...produto, quantidade: 1 });
-  salvarCarrinhoPendente(); renderizarCarrinho();
+  if (itemNoCarrinho) itemNoCarrinho.quantidade++;
+  else carrinho.push({ ...produto, quantidade: 1 });
+
+  salvarCarrinhoPendente();
+  renderizarCarrinho();
 }
 
 function removerDoCarrinho(idProd) {
-  const idx = carrinho.findIndex(i => i.id === idProd); if (idx === -1) return;
+  const idx = carrinho.findIndex(i => i.id === idProd);
+  if (idx === -1) return;
   const produto = estoque.find(p => p.id === idProd);
-  produto.quantidade += parseInt(carrinho[idx].quantidade, 10); salvarNoFirebaseSilencioso('estoque', estoque);
-  carrinho.splice(idx, 1); salvarCarrinhoPendente(); renderizarCarrinho();
+  
+  produto.quantidade += parseInt(carrinho[idx].quantidade, 10);
+  salvarNoFirebaseSilencioso('estoque', estoque);
+  
+  carrinho.splice(idx, 1);
+  salvarCarrinhoPendente();
+  renderizarCarrinho();
 }
 
-function salvarCarrinhoPendente() { localStorage.setItem('carrinhoPendente', JSON.stringify(carrinho)); }
+function salvarCarrinhoPendente() {
+  localStorage.setItem('carrinhoPendente', JSON.stringify(carrinho));
+}
 
 function renderizarCarrinho() {
-  const container = document.getElementById('itens-carrinho'); container.innerHTML = ''; 
+  const container = document.getElementById('itens-carrinho');
+  container.innerHTML = '';
   let subtotal = 0;
   
   carrinho.forEach(item => {
-    const valorItem = parseFloat(item.preco) * parseInt(item.quantidade, 10); subtotal += valorItem;
-    container.innerHTML += `<div class='item-carrinho'><div style='flex:1;'><div style='font-weight:700; color:#2c3e50;'>${item.nome}</div><div style='font-size:13px; color:#7f8c8d;'>${item.quantidade} × R$ ${formatarMoeda(item.preco)} = R$ ${formatarMoeda(valorItem)}</div></div><button style='color:#e74c3c; border:none; background:transparent; cursor:pointer; font-size:18px; padding:0 10px;' onclick='removerDoCarrinho(${item.id})'>✕</button></div>`;
+    const valorItem = parseFloat(item.preco) * parseInt(item.quantidade, 10);
+    subtotal += valorItem;
+    container.innerHTML += `
+      <div class='item-carrinho'>
+        <div style='flex:1;'>
+          <div style='font-weight:700; color:#2c3e50;'>${item.nome}</div>
+          <div style='font-size:13px; color:#7f8c8d;'>${item.quantidade} × R$ ${formatarMoeda(item.preco)} = R$ ${formatarMoeda(valorItem)}</div>
+        </div>
+        <button style='color:#e74c3c; border:none; background:transparent; cursor:pointer; font-size:18px; padding:0 10px;' onclick='removerDoCarrinho(${item.id})'>✕</button>
+      </div>
+    `;
   });
 
   let totalAPagar = subtotal;
@@ -596,9 +734,15 @@ function renderizarCarrinho() {
 }
 
 function limparCarrinho() {
-  carrinho.forEach(item => { const produto = estoque.find(p => p.id === item.id); if (produto) produto.quantidade += parseInt(item.quantidade, 10); });
-  carrinho = []; creditoTroca = 0; localStorage.removeItem('creditoTroca');
-  salvarNoFirebaseSilencioso('estoque', estoque); salvarCarrinhoPendente(); renderizarCarrinho();
+  carrinho.forEach(item => {
+    const produto = estoque.find(p => p.id === item.id);
+    if (produto) produto.quantidade += parseInt(item.quantidade, 10);
+  });
+  carrinho = [];
+  creditoTroca = 0; localStorage.removeItem('creditoTroca');
+  salvarNoFirebaseSilencioso('estoque', estoque);
+  salvarCarrinhoPendente();
+  renderizarCarrinho();
 }
 
 // ==========================================
@@ -611,9 +755,16 @@ function abrirModalDelivery() {
   let totalAPagar = Math.max(0, subtotal - creditoTroca);
   if (totalAPagar === 0 && subtotal > 0) return alert('⚠️ Trocas exatas não podem ser enviadas por delivery direto. Cancele e lance nova venda normal.');
 
-  const select = document.getElementById('delivery-entregador'); select.innerHTML = `<option value=''>-- Selecione um Entregador Livre --</option>`;
-  usuarios.filter(u => u.perfil === 'entregador' && u.isLivre).forEach(u => { select.innerHTML += `<option value='${u.id}'>🏍️ ${u.user}</option>`; });
-  document.getElementById('delivery-endereco').value = ''; document.getElementById('delivery-pagamento').value = 'Pix'; mudarPagamentoDelivery();
+  const select = document.getElementById('delivery-entregador');
+  select.innerHTML = `<option value=''>-- Selecione um Entregador Livre --</option>`;
+  usuarios.filter(u => u.perfil === 'entregador' && u.isLivre).forEach(u => {
+    select.innerHTML += `<option value='${u.id}'>🏍️ ${u.user}</option>`;
+  });
+  
+  document.getElementById('delivery-endereco').value = '';
+  document.getElementById('delivery-pagamento').value = 'Pix';
+  mudarPagamentoDelivery();
+  
   abrirModal('modal-delivery');
 }
 
@@ -635,23 +786,49 @@ function confirmarDelivery() {
   const endereco = document.getElementById('delivery-endereco').value.trim();
   const idEntregador = document.getElementById('delivery-entregador').value;
   const pagamento = document.getElementById('delivery-pagamento').value;
+
   if (!endereco || !idEntregador) return alert('❌ Preencha endereço e selecione o entregador.');
 
   let subtotal = carrinho.reduce((s, i) => s + (parseFloat(i.preco) * parseInt(i.quantidade, 10)), 0);
   const totalAPagar = Math.max(0, subtotal - creditoTroca);
 
-  const idPedidoNovo = Date.now(); const numNF = gerarProximaNF();
+  const idPedidoNovo = Date.now();
+  const numNF = gerarProximaNF();
 
-  entregas.push({ id: idPedidoNovo, nf: numNF, data: new Date().toLocaleString('pt-BR'), itens: [...carrinho], total: totalAPagar, endereco: endereco, idEntregador: parseInt(idEntregador), atendente: usuarioLogado.user, status: 'pendente', pagamento: pagamento, tempoCriacao: Date.now(), tempoEntrega: null });
+  entregas.push({
+    id: idPedidoNovo,
+    nf: numNF,
+    data: new Date().toLocaleString('pt-BR'),
+    itens: [...carrinho],
+    total: totalAPagar,
+    endereco: endereco,
+    idEntregador: parseInt(idEntregador),
+    atendente: usuarioLogado.user,
+    status: 'pendente',
+    pagamento: pagamento,
+    tempoCriacao: Date.now(),
+    tempoEntrega: null
+  });
   salvarNoFirebaseSilencioso('entregas', entregas);
 
   if (pagamento !== 'pagar_entrega') {
-    vendas.push({ id: idPedidoNovo, nf: numNF, data: new Date().toLocaleString('pt-BR'), itens: [...carrinho], total: totalAPagar, formaPagamento: pagamento, usuario: usuarioLogado.user, tipo: 'Delivery' });
+    vendas.push({
+      id: idPedidoNovo,
+      nf: numNF,
+      data: new Date().toLocaleString('pt-BR'),
+      itens: [...carrinho],
+      total: totalAPagar,
+      formaPagamento: pagamento,
+      usuario: usuarioLogado.user,
+      tipo: 'Delivery'
+    });
     salvarNoFirebaseSilencioso('vendas', vendas);
   }
 
-  fecharModal('modal-delivery'); carrinho = []; creditoTroca = 0; localStorage.removeItem('creditoTroca');
-  salvarCarrinhoPendente(); renderizarCarrinho();
+  fecharModal('modal-delivery');
+  carrinho = []; creditoTroca = 0; localStorage.removeItem('creditoTroca');
+  salvarCarrinhoPendente();
+  renderizarCarrinho();
   
   document.getElementById('titulo-nf-sucesso').textContent = 'Identificação do Pedido / NF';
   document.getElementById('numero-nf-gerado').innerHTML = `Ped: #${idPedidoNovo.toString().slice(-4)}<br><span style='font-size:26px; color:#e74c3c;'>NF: #${numNF}</span>`;
@@ -677,33 +854,58 @@ function iniciarPagamento(forma) {
 
   if (forma === 'Dinheiro') {
     document.getElementById('modal-dinheiro-total').textContent = formatarMoeda(valorTotalVendaAtual);
-    document.getElementById('valor-recebido').value = ''; document.getElementById('area-troco').style.display = 'none'; document.getElementById('valor-troco').textContent = '0,00';
+    document.getElementById('valor-recebido').value = '';
+    document.getElementById('area-troco').style.display = 'none';
+    document.getElementById('valor-troco').textContent = '0,00';
     abrirModal('modal-dinheiro');
-  } else if (forma === 'Pix') {
-    if (!config.chavePix) return alert('⚠️ Chave Pix não configurada.');
-    gerarInterfacePix(valorTotalVendaAtual); abrirModal('modal-pix');
-  } else if (forma === 'Cartão') { processarCartao(valorTotalVendaAtual); }
+  } 
+  else if (forma === 'Pix') {
+    if (!config.chavePix) return alert('⚠️ Chave Pix não configurada. Configure no Painel ADM.');
+    gerarInterfacePix(valorTotalVendaAtual);
+    abrirModal('modal-pix');
+  } 
+  else if (forma === 'Cartão') {
+    processarCartao(valorTotalVendaAtual);
+  }
 }
 
 function calcularTrocoDinamico() {
-  const input = document.getElementById('valor-recebido').value; const recebido = parseFloat(input.replace(',', '.'));
-  const areaTroco = document.getElementById('area-troco'); const spanTroco = document.getElementById('valor-troco');
-  if (isNaN(recebido) || recebido < valorTotalVendaAtual) { areaTroco.style.display = 'none'; spanTroco.textContent = '0,00'; return; }
-  spanTroco.textContent = formatarMoeda(recebido - valorTotalVendaAtual); areaTroco.style.display = 'block';
+  const input = document.getElementById('valor-recebido').value;
+  const recebido = parseFloat(input.replace(',', '.'));
+  const areaTroco = document.getElementById('area-troco');
+  const spanTroco = document.getElementById('valor-troco');
+
+  if (isNaN(recebido) || recebido < valorTotalVendaAtual) {
+    areaTroco.style.display = 'none';
+    spanTroco.textContent = '0,00';
+    return;
+  }
+
+  const troco = recebido - valorTotalVendaAtual;
+  spanTroco.textContent = formatarMoeda(troco);
+  areaTroco.style.display = 'block';
 }
 
 function calcularTrocoEConfirmar() {
-  const input = document.getElementById('valor-recebido').value; const recebido = parseFloat(input.replace(',', '.'));
+  const input = document.getElementById('valor-recebido').value;
+  const recebido = parseFloat(input.replace(',', '.'));
   if (isNaN(recebido) || recebido < valorTotalVendaAtual) return alert('❌ Valor inserido inválido.');
-  if (confirm('✅ Confirmar entrega do troco e finalizar?')) { fecharModal('modal-dinheiro'); confirmarVendaFeita('Dinheiro'); }
+
+  if (confirm('✅ Confirmar entrega do troco e finalizar?')) {
+    fecharModal('modal-dinheiro');
+    confirmarVendaFeita('Dinheiro');
+  }
 }
 
 function gerarInterfacePix(valor) {
   document.getElementById('modal-pix-total').textContent = formatarMoeda(valor);
   const payload = gerarPayloadPix(config.chavePix, valor, 'Loja PDV', 'Cidade');
   document.getElementById('pix-copia-cola').value = payload;
+  
   const canvas = document.getElementById('canvas-qrcode');
-  if (typeof QRious !== 'undefined') new QRious({ element: canvas, value: payload, size: 220, level: 'M' });
+  if (typeof QRious !== 'undefined') {
+    new QRious({ element: canvas, value: payload, size: 220, level: 'M' });
+  }
 }
 
 async function processarCartao(valorTotal, idEntregaOpcional = null) {
@@ -741,12 +943,20 @@ async function processarCartao(valorTotal, idEntregaOpcional = null) {
 function confirmarVendaFeita(formaPagamento) {
   const numNF = gerarProximaNF();
   
-  // O total da venda para o financeiro será sempre APENAS O QUE FOI PAGO (a diferença). 
-  // Isso evita inflar o faturamento no caso de trocas.
-  vendas.push({ id: Date.now(), nf: numNF, data: new Date().toLocaleString('pt-BR'), itens: [...carrinho], total: valorTotalVendaAtual, formaPagamento: formaPagamento, usuario: usuarioLogado.user, tipo: 'Balcão' });
+  vendas.push({
+    id: Date.now(),
+    nf: numNF,
+    data: new Date().toLocaleString('pt-BR'),
+    itens: [...carrinho],
+    total: valorTotalVendaAtual,
+    formaPagamento: formaPagamento,
+    usuario: usuarioLogado.user,
+    tipo: 'Balcão'
+  });
   salvarNoFirebaseSilencioso('vendas', vendas);
   
-  fecharModal('modal-pix'); fecharModal('modal-dinheiro');
+  fecharModal('modal-pix');
+  fecharModal('modal-dinheiro');
   carrinho = []; creditoTroca = 0; localStorage.removeItem('creditoTroca');
   salvarCarrinhoPendente(); renderizarProdutos(); renderizarCarrinho();
   
@@ -757,7 +967,7 @@ function confirmarVendaFeita(formaPagamento) {
 }
 
 // ==========================================
-// PAINEL ADM - DASHBOARDS INTELIGENTES BI
+// PAINEL ADM - DASHBOARDS INTELIGENTES BI (FILTROS)
 // ==========================================
 function aplicarFiltroPersonalizado() {
   const inicio = document.getElementById('filtro-data-inicio').value;
@@ -933,7 +1143,7 @@ function cadastrarProduto() {
   if (!nome || isNaN(preco) || isNaN(qtd)) return alert('❌ Preencha Nome, Preço e Quantidade corretamente.');
   estoque.push({ id: Date.now(), nome, preco, quantidade: qtd, imagem: imgBase64Temp });
   salvarNoFirebaseSilencioso('estoque', estoque);
-  document.getElementById('prod-nome').value = ''; document.getElementById('prod-preco').value = ''; document.getElementById('prod-qtd').value = ''; imgBase64Temp = ''; document.getElementById('preview-img-cadastro').src = '';
+  document.getElementById('prod-nome').value = ''; document.getElementById('prod-preco').value = ''; document.getElementById('prod-qtd').value = ''; document.getElementById('prod-imagem-file').value = ''; document.getElementById('prod-imagem-url').value = ''; document.getElementById('preview-img-cadastro').src = ''; imgBase64Temp = '';
   renderizarListaEstoqueAdm(); alert('✅ Produto cadastrado!');
 }
 
@@ -942,7 +1152,7 @@ function renderizarListaEstoqueAdm() {
   estoque.forEach(prod => {
     painel.innerHTML += `
       <div class='linha-lista'>
-        <div><strong style='font-size:15px; color:#2c3e50;'>${prod.nome}</strong> <span style='color:#27ae60; margin-left:10px;'>R$ ${formatarMoeda(prod.preco)}</span></div>
+        <div><strong style='font-size:15px; color:#2c3e50;'>${prod.nome}</strong> <span style='color:#27ae60; font-weight:bold; margin-left:10px;'>R$ ${formatarMoeda(prod.preco)}</span></div>
         <div class='acoes-lista'><span style='color:#7f8c8d; font-size:13px; margin-right:15px;'>Estoque: <strong>${prod.quantidade}</strong></span><button class='btn-acao btn-edit' onclick='abrirEdicaoProduto(${prod.id})'>✏️ Editar</button><button class='btn-acao btn-del' onclick='excluirProduto(${prod.id})'>🗑️</button></div>
       </div>
     `;
