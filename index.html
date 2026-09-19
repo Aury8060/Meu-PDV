@@ -14,6 +14,7 @@
 </head>
 <body>
 
+  <!-- TELA DE LOGIN -->
   <div id='tela-login' class='tela ativa'>
     <div class='login-container'>
       <h2>🔐 Acesso ao Sistema</h2>
@@ -24,6 +25,7 @@
     </div>
   </div>
 
+  <!-- TELA DO ENTREGADOR (EXCLUSIVA) -->
   <div id='tela-entregador' class='tela'>
     <header class='header-adm-fixo'>
       <div class='header-topo'>
@@ -42,6 +44,7 @@
     </div>
   </div>
 
+  <!-- TELA DE VENDA (CAIXA) -->
   <div id='tela-venda' class='tela'>
     <header>
       <h1>🛒 Caixa - Operador: <span id='nome-operador'></span></h1>
@@ -53,30 +56,23 @@
 
     <div class='conteudo'>
       
+      <!-- Coluna Produtos -->
       <div class='coluna'>
-        <div style='display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;'>
-          <button class='btn-sec' style='background: #3498db; color: white; border: none;' onclick='abrirModalAberturaCaixa()'>💵 Fundo de Caixa</button>
-          <button class='btn-sec' style='background: #e74c3c; color: white; border: none;' onclick='abrirModalHistorico()'>📜 Histórico / Estorno</button>
-          <button class='btn-sec btn-delivery-gestao' id='btn-gestao-delivery' style='background: #8e44ad; color: white; border: none; display: none;' onclick='abrirModalGestaoEntregas()'>📦 Gestão Delivery</button>
-        </div>
-
         <h2>Produtos Disponíveis</h2>
         <input type='text' id='busca' placeholder='Buscar produto...' oninput='filtrarProdutos()'>
-        
         <div class='area-rolagem' style='padding-bottom: 30px;'>
           <div id='lista-produtos' class='grade-produtos'></div>
         </div>
       </div>
 
+      <!-- Coluna Carrinho -->
       <div class='coluna carrinho'>
         <h2 style='padding: 10px 15px 0;'>Carrinho</h2>
         <div class='area-rolagem itens-carrinho-lista' id='itens-carrinho' style='padding-bottom: 20px;'></div>
         
+        <!-- Rodapé fixo dentro do carrinho -->
         <div class='rodape-carrinho'>
           <div class='total'>
-            <div id='linha-credito-troca' style='display: none; font-size: 16px; color: #f39c12; margin-bottom: 5px;'>
-              Crédito de Troca: - R$ <span id='valor-credito'>0,00</span>
-            </div>
             <strong>TOTAL: R$ <span id='valor-total'>0,00</span></strong>
           </div>
           <div class='botoes-pagamento'>
@@ -92,6 +88,7 @@
     </div>
   </div>
 
+  <!-- TELA DE ADMINISTRAÇÃO -->
   <div id='tela-adm' class='tela'>
     <header class='header-adm-fixo'>
       <div class='header-topo'>
@@ -108,6 +105,7 @@
 
     <div class='conteudo conteudo-adm area-rolagem'>
       
+      <!-- ABA DASHBOARD -->
       <div id='aba-dashboard' class='aba-conteudo ativa'>
         
         <div style='display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;'>
@@ -131,8 +129,7 @@
         </div>
 
         <div class='cards-dash'>
-          <div class='card'><h3>Vendas Realizadas</h3><p id='dash-total-geral'>R$ 0,00</p></div>
-          <div class='card'><h3>Fundo de Caixa (Abertura)</h3><p id='dash-fundo-caixa' style='color:#f39c12;'>R$ 0,00</p></div>
+          <div class='card'><h3>Total Filtrado</h3><p id='dash-total-geral'>R$ 0,00</p></div>
           <div class='card'><h3>Quantidade de Vendas</h3><p id='dash-qtd-vendas'>0</p></div>
         </div>
         
@@ -229,66 +226,6 @@
     </div>
   </div>
 
-  <!-- MODAL FUNDO DE CAIXA -->
-  <div id='modal-abertura-caixa' class='modal'>
-    <div class='modal-conteudo text-center'>
-      <h2>💵 Abertura de Caixa</h2>
-      <p style='margin-bottom: 15px; color: #7f8c8d; font-size: 14px;'>Insira o valor em dinheiro que você tem na gaveta para passar troco.</p>
-      <input type='number' step='0.01' id='valor-fundo-caixa' placeholder='Ex: 100.00'>
-      <div class='botoes-pagamento'>
-        <button class='btn-principal' onclick='confirmarAberturaCaixa()'>✅ Abrir Caixa</button>
-        <button class='btn-limpar' onclick='fecharModal(`modal-abertura-caixa`)'>❌ Cancelar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL HISTÓRICO E ESTORNO -->
-  <div id='modal-historico-vendas' class='modal'>
-    <div class='modal-conteudo' style='max-width: 600px;'>
-      <h2>📜 Histórico e Estornos</h2>
-      <input type='text' id='busca-historico' placeholder='🔍 Buscar por NF (Ex: 0015) ou Valor...' oninput='renderizarHistoricoVendas()'>
-      <div id='lista-historico-vendas' class='area-rolagem' style='max-height: 350px; margin-top: 15px;'></div>
-      <button class='btn-sec btn-bloco' onclick='fecharModal(`modal-historico-vendas`)'>Fechar Histórico</button>
-    </div>
-  </div>
-
-  <!-- MODAL ESCOLHA DE ESTORNO (NOVO) -->
-  <div id='modal-acao-estorno' class='modal'>
-    <div class='modal-conteudo text-center'>
-      <h2>🔄 Opções de Estorno</h2>
-      <p style='margin-bottom: 15px; font-size: 14px; color: #7f8c8d;'>O que você deseja fazer com esta venda?</p>
-      <input type='hidden' id='id-venda-estorno'>
-      <div class='botoes-pagamento' style='grid-template-columns: 1fr;'>
-        <button class='btn-principal' style='background: #3498db;' onclick='executarEstorno(`troca`)'>🛒 Voltar para Lançamento (Trocar Produtos)</button>
-        <button class='btn-perigo' onclick='executarEstorno(`cancelar`)'>🗑️ Cancelar Venda Definitivamente</button>
-        <button class='btn-sec btn-bloco' onclick='fecharModal(`modal-acao-estorno`)'>❌ Fechar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL GESTÃO DE ENTREGAS -->
-  <div id='modal-gestao-entregas' class='modal'>
-    <div class='modal-conteudo' style='max-width: 600px;'>
-      <h2>📦 Gestão de Entregas Pendentes</h2>
-      <p style='margin-bottom: 15px; color: #7f8c8d; font-size: 14px;'>Acompanhe, altere o motoboy ou cancele pedidos que já foram despachados.</p>
-      <div id='lista-gestao-entregas' class='area-rolagem' style='max-height: 350px;'></div>
-      <button class='btn-sec btn-bloco' onclick='fecharModal(`modal-gestao-entregas`)'>Fechar Gestão</button>
-    </div>
-  </div>
-
-  <!-- MODAL SUCESSO UNIVERSAL COM NF -->
-  <div id='modal-sucesso-universal' class='modal'>
-    <div class='modal-conteudo text-center'>
-      <h2 style='color: #27ae60;'>✅ Operação Concluída!</h2>
-      <p style='margin: 15px 0; font-size: 16px; color: #555;' id='mensagem-sucesso-universal'>Venda finalizada com sucesso.</p>
-      <div style='background: #f8f9fa; border: 2px dashed #3498db; padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
-        <p style='font-size: 14px; color: #7f8c8d; margin-bottom: 5px;' id='titulo-nf-sucesso'>Número da NF / Recibo</p>
-        <p style='font-size: 40px; font-weight: 900; color: #2c3e50; margin: 0;'>#<span id='numero-nf-gerado'>0000</span></p>
-      </div>
-      <button class='btn-principal' onclick='fecharModal(`modal-sucesso-universal`)'>Ok, Fechar</button>
-    </div>
-  </div>
-
   <!-- MODAL DELIVERY -->
   <div id='modal-delivery' class='modal'>
     <div class='modal-conteudo'>
@@ -320,6 +257,21 @@
     </div>
   </div>
 
+  <!-- NOVO MODAL: TELA DE SUCESSO DO PEDIDO DELIVERY -->
+  <div id='modal-sucesso-delivery' class='modal'>
+    <div class='modal-conteudo text-center'>
+      <h2 style='color: #27ae60;'>✅ Pedido Gerado!</h2>
+      <p style='margin: 15px 0; font-size: 16px; color: #555;'>O pedido foi despachado para o entregador.</p>
+      
+      <div style='background: #f8f9fa; border: 2px dashed #3498db; padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
+        <p style='font-size: 14px; color: #7f8c8d; margin-bottom: 5px;'>Identificação do Pedido</p>
+        <p style='font-size: 40px; font-weight: 900; color: #2c3e50; margin: 0;'>#<span id='numero-pedido-gerado'>0000</span></p>
+      </div>
+      
+      <button class='btn-principal' onclick='fecharModal(`modal-sucesso-delivery`)'>Ok, Fechar</button>
+    </div>
+  </div>
+
   <!-- MODAL PAGAMENTO ENTREGADOR -->
   <div id='modal-entregador-pagamento' class='modal'>
     <div class='modal-conteudo text-center'>
@@ -335,6 +287,7 @@
     </div>
   </div>
 
+  <!-- MODAL CÂMERA QR CODE -->
   <div id='modal-camera' class='modal'>
     <div class='modal-conteudo text-center' style='width: 95%; max-width: 500px;'>
       <h2>📷 Aponte para o Crachá</h2>
@@ -343,6 +296,7 @@
     </div>
   </div>
 
+  <!-- MODAL EDITAR PRODUTO -->
   <div id='modal-editar-produto' class='modal'>
     <div class='modal-conteudo'>
       <h2>✏️ Editar Produto</h2>
@@ -360,6 +314,7 @@
     </div>
   </div>
 
+  <!-- MODAL EDITAR USUÁRIO -->
   <div id='modal-editar-usuario' class='modal'>
     <div class='modal-conteudo'>
       <h2>✏️ Editar Usuário</h2>
@@ -381,10 +336,11 @@
     </div>
   </div>
 
+  <!-- MODAL DINHEIRO (TROCO) -->
   <div id='modal-dinheiro' class='modal'>
     <div class='modal-conteudo text-center'>
       <h2>💵 Receber Dinheiro</h2>
-      <p class='texto-destaque'>Total a Pagar: <strong>R$ <span id='modal-dinheiro-total'>0,00</span></strong></p>
+      <p class='texto-destaque'>Total: <strong>R$ <span id='modal-dinheiro-total'>0,00</span></strong></p>
       <input type='number' step='0.01' id='valor-recebido' placeholder='Valor dado pelo cliente (R$)' oninput='calcularTrocoDinamico()'>
       <div id='area-troco' class='area-troco'>Troco: <strong>R$ <span id='valor-troco'>0,00</span></strong></div>
       <div class='botoes-pagamento'>
@@ -394,10 +350,11 @@
     </div>
   </div>
 
+  <!-- MODAL PIX -->
   <div id='modal-pix' class='modal'>
     <div class='modal-conteudo text-center'>
       <h2>📱 Pagamento via Pix</h2>
-      <p class='texto-destaque' style='color:#27ae60;'>Total a Pagar: <strong>R$ <span id='modal-pix-total'>0,00</span></strong></p>
+      <p class='texto-destaque' style='color:#27ae60;'>Total: <strong>R$ <span id='modal-pix-total'>0,00</span></strong></p>
       <div class='qr-wrap'><canvas id='canvas-qrcode'></canvas></div>
       <label style='font-size: 12px; text-align: left;'>Pix Copia e Cola:</label>
       <input type='text' id='pix-copia-cola' readonly style='font-size: 11px; margin-bottom: 8px; padding: 8px;'>
