@@ -1,6 +1,5 @@
-const CACHE_NAME = 'pdv-cache-v2';
+const CACHE_NAME = 'pdv-cache-v3';
 
-// Cacheia apenas os arquivos locais essenciais para não dar erro de CORS
 const urlsToCache = [
   './',
   './index.html',
@@ -10,36 +9,37 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
 });
 
-// Remove caches antigos automaticamente
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cache => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
-          }
+          if (cache !== CACHE_NAME) return caches.delete(cache);
         })
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Intercepta e responde com cache ou rede
+// ESTRATÉGIA NETWORK-FIRST (Sempre tenta a rede antes do cache)
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then(response => {
-        return response || fetch(event.request);
+        // Se a rede funcionou, salva no cache a versão mais nova
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        return response;
+      })
+      .catch(() => {
+        // Se estiver sem internet, usa o cache
+        return caches.match(event.request);
       })
   );
 });
